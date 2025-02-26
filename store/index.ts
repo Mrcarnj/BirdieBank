@@ -4,6 +4,7 @@ import roundReducer from './slices/roundSlice';
 import courseReducer from './slices/courseSlice';
 import playerReducer from './slices/playerSlice';
 import gameReducer from './slices/gameSlice';
+import themeReducer from './slices/themeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     course: courseReducer,
     player: playerReducer,
     game: gameReducer,
+    theme: themeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

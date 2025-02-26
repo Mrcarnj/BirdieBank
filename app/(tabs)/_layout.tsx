@@ -1,13 +1,14 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { COLORS } from '../../constants/theme';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
+import { useTheme } from '../../components/ThemeProvider';
 
 export default function TabLayout() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentRound } = useSelector((state: RootState) => state.round);
+  const { colors } = useTheme();
 
   if (!user) {
     return null; // Don't render tabs if user is not authenticated
@@ -16,11 +17,11 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: COLORS.secondary,
-          borderTopColor: COLORS.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
           height: 60,
           paddingBottom: 10,
         },
@@ -29,9 +30,9 @@ export default function TabLayout() {
           fontWeight: '500',
         },
         headerStyle: {
-          backgroundColor: COLORS.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: COLORS.secondary,
+        headerTintColor: colors.textLight,
         headerTitleStyle: {
           fontWeight: 'bold',
         },

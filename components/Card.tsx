@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   TouchableOpacityProps,
 } from 'react-native';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { SIZES } from '../constants/theme';
+import { useTheme } from './ThemeProvider';
 
 interface CardProps extends TouchableOpacityProps {
   children: React.ReactNode;
@@ -22,9 +23,11 @@ const Card: React.FC<CardProps> = ({
   onPress,
   ...rest
 }) => {
+  const { colors, shadows } = useTheme();
+
   const getCardStyle = (): ViewStyle => {
     let cardStyle: ViewStyle = {
-      backgroundColor: COLORS.card,
+      backgroundColor: colors.card,
       borderRadius: SIZES.radius,
       padding: SIZES.padding,
     };
@@ -33,20 +36,20 @@ const Card: React.FC<CardProps> = ({
       case 'default':
         cardStyle = {
           ...cardStyle,
-          ...SHADOWS.light,
+          ...shadows.light,
         };
         break;
       case 'elevated':
         cardStyle = {
           ...cardStyle,
-          ...SHADOWS.dark,
+          ...shadows.dark,
         };
         break;
       case 'outlined':
         cardStyle = {
           ...cardStyle,
           borderWidth: 1,
-          borderColor: COLORS.border,
+          borderColor: colors.border,
           shadowOpacity: 0,
           elevation: 0,
         };
@@ -78,8 +81,7 @@ const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    marginVertical: SIZES.base,
+    marginBottom: SIZES.base,
   },
 });
 

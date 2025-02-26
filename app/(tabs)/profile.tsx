@@ -18,22 +18,24 @@ import { useDispatch, useSelector } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
-import { COLORS, SIZES, FONTS } from '../../constants/theme';
+import { SIZES, FONTS } from '../../constants/theme';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import { signOut, getSession, clearError } from '../../store/slices/authSlice';
+import { toggleDarkMode } from '../../store/slices/themeSlice';
 import { AppDispatch, RootState } from '../../store';
 import { createFontStyle } from '../../utils/styleUtils';
+import { useTheme } from '../../components/ThemeProvider';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((state: RootState) => state.auth.user);
   const isLoading = useSelector((state: RootState) => state.auth.isLoading);
+  const { isDarkMode, colors } = useTheme();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [distanceUnit, setDistanceUnit] = useState('yards'); // 'yards' or 'meters'
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -101,7 +103,7 @@ export default function ProfileScreen() {
         setLocationEnabled(prev => !prev);
         break;
       case 'darkMode':
-        setDarkModeEnabled(prev => !prev);
+        dispatch(toggleDarkMode());
         break;
       default:
         break;
@@ -116,44 +118,44 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading profile...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textPrimary }]}>Loading profile...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             {uploadingImage ? (
-              <View style={styles.avatar}>
-                <ActivityIndicator size="small" color={COLORS.textLight} />
+              <View style={[styles.avatar, { backgroundColor: colors.primaryDark, borderColor: colors.secondary }]}>
+                <ActivityIndicator size="small" color={colors.textLight} />
               </View>
             ) : (
               <>
                 {user?.profileImageUrl ? (
-                  <Image source={{ uri: user.profileImageUrl }} style={styles.avatar} />
+                  <Image source={{ uri: user.profileImageUrl }} style={[styles.avatar, { borderColor: colors.secondary }]} />
                 ) : (
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{user?.email?.charAt(0).toUpperCase()}</Text>
+                  <View style={[styles.avatar, { backgroundColor: colors.primaryDark, borderColor: colors.secondary }]}>
+                    <Text style={[styles.avatarText, { color: colors.textLight }]}>{user?.email?.charAt(0).toUpperCase()}</Text>
                   </View>
                 )}
-                <TouchableOpacity style={styles.editAvatarButton} onPress={handlePickImage}>
-                  <Ionicons name="camera" size={16} color={COLORS.textLight} />
+                <TouchableOpacity style={[styles.editAvatarButton, { backgroundColor: colors.secondary, borderColor: colors.secondary }]} onPress={handlePickImage}>
+                  <Ionicons name="camera" size={16} color={colors.textLight} />
                 </TouchableOpacity>
               </>
             )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.userName}>{user?.name || 'Golfer'}</Text>
-            <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={[styles.userName, { color: colors.textLight }]}>{user?.name || 'Golfer'}</Text>
+            <Text style={[styles.userEmail, { color: colors.textLight + 'DD' }]}>{user?.email}</Text>
             {user?.handicapIndex !== undefined && (
-              <View style={styles.handicapBadge}>
-                <Text style={styles.handicapText}>
-                  Handicap: {user.handicapIndex.toFixed(1)}
+              <View style={[styles.handicapBadge, { backgroundColor: colors.textLight + '30' }]}>
+                <Text style={[styles.handicapText, { color: colors.textLight }]}>
+                  Handicap: {user.handicapIndex < 0 ? '+' : ''}{Math.abs(user.handicapIndex).toFixed(1)}
                 </Text>
               </View>
             )}
@@ -162,101 +164,103 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Account</Text>
         <Card style={styles.card}>
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/profile/edit' as any)}
+            onPress={() => router.push('/profile/edit/edit' as any)}
           >
-            <Ionicons name="person-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="person-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/profile/handicap' as any)}
+            onPress={() => router.push('/profile/handicap/handicap' as any)}
           >
-            <Ionicons name="golf-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Handicap Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="golf-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Handicap Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/profile/password' as any)}
+            onPress={() => router.push('/profile/password/password' as any)}
           >
-            <Ionicons name="lock-closed-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Change Password</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="lock-closed-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Change Password</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
         </Card>
 
-        <Text style={styles.sectionTitle}>Preferences</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Preferences</Text>
         <Card style={styles.card}>
           <View style={styles.menuItem}>
-            <Ionicons name="notifications-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Notifications</Text>
+            <Ionicons name="notifications-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Notifications</Text>
             <Switch
-              trackColor={{ false: COLORS.border, true: COLORS.primary + '80' }}
-              thumbColor={notificationsEnabled ? COLORS.primary : COLORS.textSecondary}
-              ios_backgroundColor={COLORS.border}
+              trackColor={{ false: colors.border, true: colors.primary + '80' }}
+              thumbColor={notificationsEnabled ? colors.primary : colors.textSecondary}
+              ios_backgroundColor={colors.border}
               onValueChange={() => toggleSwitch('notifications')}
               value={notificationsEnabled}
             />
           </View>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <View style={styles.menuItem}>
-            <Ionicons name="location-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Location Services</Text>
+            <Ionicons name="location-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Location Services</Text>
             <Switch
-              trackColor={{ false: COLORS.border, true: COLORS.primary + '80' }}
-              thumbColor={locationEnabled ? COLORS.primary : COLORS.textSecondary}
-              ios_backgroundColor={COLORS.border}
+              trackColor={{ false: colors.border, true: colors.primary + '80' }}
+              thumbColor={locationEnabled ? colors.primary : colors.textSecondary}
+              ios_backgroundColor={colors.border}
               onValueChange={() => toggleSwitch('location')}
               value={locationEnabled}
             />
           </View>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <View style={styles.menuItem}>
-            <Ionicons name="moon-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Dark Mode</Text>
+            <Ionicons name="moon-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Dark Mode</Text>
             <Switch
-              trackColor={{ false: COLORS.border, true: COLORS.primary + '80' }}
-              thumbColor={darkModeEnabled ? COLORS.primary : COLORS.textSecondary}
-              ios_backgroundColor={COLORS.border}
+              trackColor={{ false: colors.border, true: colors.primary + '80' }}
+              thumbColor={isDarkMode ? colors.primary : colors.textSecondary}
+              ios_backgroundColor={colors.border}
               onValueChange={() => toggleSwitch('darkMode')}
-              value={darkModeEnabled}
+              value={isDarkMode}
             />
           </View>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <View style={styles.menuItem}>
-            <Ionicons name="resize-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Distance Unit</Text>
+            <Ionicons name="resize-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Distance Unit</Text>
             <TouchableOpacity 
-              style={styles.unitToggle}
+              style={[styles.unitToggle, { backgroundColor: colors.border }]}
               onPress={toggleDistanceUnit}
             >
               <Text style={[
                 styles.unitText, 
-                distanceUnit === 'yards' ? styles.activeUnitText : {}
+                { color: colors.textLight },
+                distanceUnit === 'yards' ? { color: colors.primary, fontWeight: 'bold' } : {}
               ]}>
                 Yards
               </Text>
-              <Text style={styles.unitSeparator}>|</Text>
+              <Text style={[styles.unitSeparator, { color: colors.border }]}>|</Text>
               <Text style={[
                 styles.unitText, 
-                distanceUnit === 'meters' ? styles.activeUnitText : {}
+                { color: colors.textLight },
+                distanceUnit === 'meters' ? { color: colors.primary, fontWeight: 'bold' } : {}
               ]}>
                 Meters
               </Text>
@@ -264,48 +268,41 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>App</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>App</Text>
         <Card style={styles.card}>
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/help' as any)}
+            onPress={() => Alert.alert('About', 'BirdieBank v1.0.0\n\nA golf score tracking app.')}
           >
-            <Ionicons name="help-circle-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="information-circle-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>About</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/about' as any)}
+            onPress={() => Alert.alert('Help', 'Need help? Contact support@birdiebank.com')}
           >
-            <Ionicons name="information-circle-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>About</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="help-circle-outline" size={22} color={colors.primary} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Help</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/privacy' as any)}
+            onPress={handleSignOut}
           >
-            <Ionicons name="shield-outline" size={22} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+            <Ionicons name="log-out-outline" size={22} color={colors.error} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.error }]}>Sign Out</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
           </TouchableOpacity>
         </Card>
-
-        <Button 
-          title="Sign Out" 
-          onPress={handleSignOut} 
-          style={styles.signOutButton}
-          variant="secondary"
-        />
-
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        
+        <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 1.0.0</Text>
       </View>
     </ScrollView>
   );
@@ -314,21 +311,17 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: SIZES.margin,
-    color: COLORS.textPrimary,
     fontSize: FONTS.body4.fontSize,
   },
   header: {
-    backgroundColor: COLORS.primary,
     paddingTop: SIZES.padding * 2,
     paddingBottom: SIZES.padding,
     paddingHorizontal: SIZES.padding / 2,
@@ -347,29 +340,24 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.primaryDark,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: COLORS.secondary,
   },
   avatarText: {
     fontSize: FONTS.h1.fontSize,
     fontWeight: 'bold',
-    color: COLORS.textLight,
   },
   editAvatarButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: COLORS.secondary,
     width: 28,
     height: 28,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.secondary,
   },
   profileInfo: {
     flex: 1,
@@ -377,16 +365,13 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: FONTS.h2.fontSize,
     fontWeight: 'bold',
-    color: COLORS.textLight,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: FONTS.body4.fontSize,
-    color: COLORS.textLight + 'DD',
     marginBottom: SIZES.base,
   },
   handicapBadge: {
-    backgroundColor: COLORS.textLight + '30',
     paddingHorizontal: SIZES.base,
     paddingVertical: 4,
     borderRadius: 12,
@@ -394,7 +379,6 @@ const styles = StyleSheet.create({
   },
   handicapText: {
     fontSize: FONTS.body4.fontSize,
-    color: COLORS.textLight,
     fontWeight: 'bold',
   },
   content: {
@@ -403,7 +387,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FONTS.h4.fontSize,
     fontWeight: 'bold',
-    color: COLORS.textPrimary,
     marginTop: SIZES.margin,
     marginBottom: SIZES.base,
     paddingHorizontal: SIZES.base,
@@ -423,31 +406,22 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: FONTS.body4.fontSize,
-    color: COLORS.textPrimary,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
     marginLeft: SIZES.padding + SIZES.padding / 2,
   },
   unitToggle: {
     flexDirection: 'row',
-    backgroundColor: COLORS.border,
     borderRadius: 15,
     paddingVertical: 4,
     paddingHorizontal: SIZES.base,
   },
   unitText: {
     fontSize: FONTS.body5.fontSize,
-    color: COLORS.textLight,
     paddingHorizontal: 8,
   },
-  activeUnitText: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-  },
   unitSeparator: {
-    color: COLORS.border,
     fontSize: FONTS.body5.fontSize,
   },
   signOutButton: {
@@ -458,6 +432,5 @@ const styles = StyleSheet.create({
     marginTop: SIZES.margin,
     marginBottom: SIZES.margin,
     fontSize: FONTS.body5.fontSize,
-    color: COLORS.textLight,
   },
 }); 

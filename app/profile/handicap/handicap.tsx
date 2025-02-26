@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-import { COLORS, SIZES, FONTS } from '../../constants/theme';
-import Button from '../../components/Button';
-import Card from '../../components/Card';
-import { AppDispatch, RootState } from '../../store';
-import { createFontStyle } from '../../utils/styleUtils';
+import { COLORS, SIZES, FONTS, SHADOWS } from '../../../constants/theme';
+import Button from '../../../components/Button';
+import Card from '../../../components/Card';
+import { AppDispatch, RootState } from '../../../store';
+import { createFontStyle } from '../../../utils/styleUtils';
 
 export default function HandicapSettingsScreen() {
   const router = useRouter();
@@ -80,12 +80,20 @@ export default function HandicapSettingsScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <Stack.Screen options={{ title: 'Handicap Settings' }} />
       
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Handicap Index</Text>
-        <Text style={styles.handicapValue}>{user?.handicapIndex?.toFixed(1) || 'N/A'}</Text>
+        <Text style={styles.handicapValue}>
+          {user?.handicapIndex !== undefined 
+            ? (user.handicapIndex < 0 ? '+' : '') + Math.abs(user.handicapIndex).toFixed(1) 
+            : 'N/A'}
+        </Text>
         <Text style={styles.lastUpdated}>Last updated: June 15, 2023</Text>
       </View>
       
@@ -95,7 +103,7 @@ export default function HandicapSettingsScreen() {
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text style={styles.settingLabel}>Auto-calculate handicap</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={styles.settingDescription} numberOfLines={2} ellipsizeMode="tail">
               Automatically update your handicap index after each round
             </Text>
           </View>
@@ -113,7 +121,7 @@ export default function HandicapSettingsScreen() {
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text style={styles.settingLabel}>Show handicap to others</Text>
-            <Text style={styles.settingDescription}>
+            <Text style={styles.settingDescription} numberOfLines={2} ellipsizeMode="tail">
               Display your handicap index on your profile
             </Text>
           </View>
@@ -133,7 +141,7 @@ export default function HandicapSettingsScreen() {
         {recentRounds.map((round) => (
           <View key={round.id} style={styles.roundItem}>
             <View style={styles.roundInfo}>
-              <Text style={styles.roundCourse}>{round.course}</Text>
+              <Text style={styles.roundCourse} numberOfLines={1} ellipsizeMode="tail">{round.course}</Text>
               <Text style={styles.roundDate}>{round.date}</Text>
             </View>
             <View style={styles.roundScores}>
@@ -143,7 +151,10 @@ export default function HandicapSettingsScreen() {
           </View>
         ))}
         
-        <TouchableOpacity style={styles.viewAllButton}>
+        <TouchableOpacity 
+          style={styles.viewAllButton}
+          onPress={() => router.push('/history/index' as any)}
+        >
           <Text style={styles.viewAllText}>View All Rounds</Text>
           <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
         </TouchableOpacity>
@@ -162,6 +173,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    width: '100%',
+  },
+  contentContainer: {
+    paddingBottom: SIZES.padding * 2,
+    width: '100%',
   },
   loadingContainer: {
     flex: 1,
@@ -172,33 +188,41 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: SIZES.base,
     color: COLORS.textPrimary,
-    ...createFontStyle('regular', SIZES.body4),
+    ...createFontStyle(FONTS.body4),
   },
   headerContainer: {
     padding: SIZES.padding,
     alignItems: 'center',
+    width: '100%',
   },
   title: {
-    ...createFontStyle('medium', SIZES.h3),
+    ...createFontStyle(FONTS.h3),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base,
+    textAlign: 'center',
   },
   handicapValue: {
-    ...createFontStyle('bold', SIZES.h1),
+    ...createFontStyle(FONTS.h1),
     color: COLORS.primary,
     marginBottom: SIZES.base,
+    textAlign: 'center',
   },
   lastUpdated: {
-    ...createFontStyle('regular', SIZES.body5),
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
+    textAlign: 'center',
   },
   settingsCard: {
     marginHorizontal: SIZES.padding,
     marginBottom: SIZES.padding,
     padding: SIZES.padding,
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    ...SHADOWS.medium,
+    width: 'auto',
   },
   sectionTitle: {
-    ...createFontStyle('medium', SIZES.body3),
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
     marginBottom: SIZES.padding,
   },
@@ -207,29 +231,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: SIZES.padding,
+    flexWrap: 'nowrap',
   },
   settingTextContainer: {
     flex: 1,
     marginRight: SIZES.padding,
   },
   settingLabel: {
-    ...createFontStyle('medium', SIZES.body4),
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
     marginBottom: 4,
+    fontWeight: '500',
   },
   settingDescription: {
-    ...createFontStyle('regular', SIZES.body5),
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
+    flexShrink: 1,
   },
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
     marginBottom: SIZES.padding,
+    width: '100%',
   },
   roundsCard: {
     marginHorizontal: SIZES.padding,
     marginBottom: SIZES.padding,
     padding: SIZES.padding,
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    ...SHADOWS.medium,
+    width: 'auto',
   },
   roundItem: {
     flexDirection: 'row',
@@ -237,27 +269,35 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.base,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    flexWrap: 'nowrap',
   },
   roundInfo: {
     flex: 1,
+    marginRight: SIZES.base,
+    flexShrink: 1,
   },
   roundCourse: {
-    ...createFontStyle('medium', SIZES.body4),
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
+    fontWeight: '500',
+    flexShrink: 1,
   },
   roundDate: {
-    ...createFontStyle('regular', SIZES.body5),
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
   },
   roundScores: {
     alignItems: 'flex-end',
+    minWidth: 70,
+    flexShrink: 0,
   },
   roundScore: {
-    ...createFontStyle('medium', SIZES.body4),
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
+    fontWeight: '500',
   },
   roundDifferential: {
-    ...createFontStyle('regular', SIZES.body5),
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
   },
   viewAllButton: {
@@ -265,11 +305,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: SIZES.padding,
+    paddingVertical: SIZES.base,
   },
   viewAllText: {
-    ...createFontStyle('medium', SIZES.body4),
+    ...createFontStyle(FONTS.body4),
     color: COLORS.primary,
     marginRight: 4,
+    fontWeight: '500',
   },
   saveButton: {
     margin: SIZES.padding,

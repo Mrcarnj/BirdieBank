@@ -12,10 +12,10 @@ import { Stack, useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import * as Haptics from 'expo-haptics';
 
-import { COLORS, SIZES, FONTS } from '../../constants/theme';
-import Button from '../../components/Button';
-import { AppDispatch, RootState } from '../../store';
-import { createFontStyle } from '../../utils/styleUtils';
+import { COLORS, SIZES, FONTS } from '../../../constants/theme';
+import Button from '../../../components/Button';
+import { AppDispatch, RootState } from '../../../store';
+import { createFontStyle } from '../../../utils/styleUtils';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();

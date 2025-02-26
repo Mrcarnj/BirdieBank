@@ -13,10 +13,10 @@ import {
   ImageStyle,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
+import { FONTS, SIZES } from '../../constants/theme';
 import { RootState, AppDispatch } from '../../store';
 import { Course, fetchCourses, fetchNearbyCourses, selectCourse, Tee } from '../../store/slices/courseSlice';
-import { fetchPlayers, selectPlayer, addGuestPlayer, Player } from '../../store/slices/playerSlice';
+import { fetchPlayers, selectPlayer, addGuestPlayer, Player, PlayerWithTee } from '../../store/slices/playerSlice';
 import { startNewRound } from '../../store/slices/roundSlice';
 import { selectGame } from '../../store/slices/gameSlice';
 import Card from '../../components/Card';
@@ -25,6 +25,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { createFontStyle } from '../../utils/styleUtils';
+import { useTheme } from '../../components/ThemeProvider';
 
 // Find the GAME_TYPES array and add an icon property to each game type
 const GAME_TYPES = [
@@ -42,6 +43,7 @@ export default function NewRoundScreen() {
   const { courses, nearbyCourses, selectedCourse } = useSelector((state: RootState) => state.course);
   const { players, selectedPlayers } = useSelector((state: RootState) => state.player);
   const { availableGames, selectedGames } = useSelector((state: RootState) => state.game);
+  const { colors, shadows } = useTheme();
   
   const [step, setStep] = useState(1);
   const [holeSelection, setHoleSelection] = useState<'front9' | 'back9' | 'full18' | 'custom'>('full18');
@@ -114,23 +116,23 @@ export default function NewRoundScreen() {
   };
 
   const renderCourseSelection = () => (
-    <View style={styles.stepContainer as any}>
-      <Text style={styles.stepTitle as any}>Select a Course</Text>
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Select a Course</Text>
       
       {locationPermission && nearbyCourses.length > 0 && (
-        <View style={styles.sectionContainer as any}>
-          <Text style={styles.sectionTitle as any}>Nearby Courses</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Nearby Courses</Text>
           {nearbyCourses.map(course => (
             <Card
               key={course.id}
               onPress={() => handleCourseSelect(course)}
-              style={styles.courseCard as any}
+              style={styles.courseCard}
             >
-              <View style={styles.courseHeader as any}>
-                <Text style={styles.courseName as any}>{course.name}</Text>
-                <FontAwesome5 name="map-marker-alt" size={16} color={COLORS.primary} />
+              <View style={styles.courseHeader}>
+                <Text style={[styles.courseName, { color: colors.textPrimary }]}>{course.name}</Text>
+                <FontAwesome5 name="map-marker-alt" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.courseDetails as any}>
+              <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
                 {course.holes.length} holes • {course.tees.length} tee options
               </Text>
             </Card>
@@ -138,18 +140,18 @@ export default function NewRoundScreen() {
         </View>
       )}
       
-      <View style={styles.sectionContainer as any}>
-        <Text style={styles.sectionTitle as any}>All Courses</Text>
+      <View style={styles.sectionContainer}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>All Courses</Text>
         {courses.map(course => (
           <Card
             key={course.id}
             onPress={() => handleCourseSelect(course)}
-            style={styles.courseCard as any}
+            style={styles.courseCard}
           >
-            <View style={styles.courseHeader as any}>
-              <Text style={styles.courseName as any}>{course.name}</Text>
+            <View style={styles.courseHeader}>
+              <Text style={[styles.courseName, { color: colors.textPrimary }]}>{course.name}</Text>
             </View>
-            <Text style={styles.courseDetails as any}>
+            <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
               {course.holes.length} holes • {course.tees.length} tee options
             </Text>
           </Card>
@@ -159,16 +161,30 @@ export default function NewRoundScreen() {
   );
 
   const renderPlayerSelection = () => (
-    <View style={styles.stepContainer as any}>
-      <Text style={styles.stepTitle as any}>Select Players</Text>
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Select Players</Text>
       
-      <View style={styles.sectionContainer as any}>
-        <View style={styles.sectionHeader as any}>
-          <Text style={styles.sectionTitle as any}>Your Players</Text>
-          <Button
-            title="Add Guest"
-            variant="outline"
+      {selectedCourse && (
+        <Card style={styles.selectedCourseCard}>
+          <View style={styles.selectedCourseHeader}>
+            <Text style={[styles.selectedCourseName, { color: colors.textPrimary }]}>{selectedCourse.name}</Text>
+            <TouchableOpacity onPress={() => setStep(1)}>
+              <Text style={[styles.changeText, { color: colors.primary }]}>Change</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.selectedCourseDetails, { color: colors.textSecondary }]}>
+            {selectedCourse.holes.length} holes • {selectedCourse.tees.length} tee options
+          </Text>
+        </Card>
+      )}
+      
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Your Players</Text>
+          <Button 
+            title="Add Guest" 
             size="small"
+            variant="outline"
             onPress={handleAddGuestPlayer}
           />
         </View>
@@ -178,70 +194,154 @@ export default function NewRoundScreen() {
           return (
             <Card
               key={player.id}
-              style={[
-                styles.playerCard as any,
-                isSelected && styles.selectedPlayerCard as any,
-              ] as any}
-              onPress={() => handlePlayerSelect(player, null)}
+              style={{
+                ...styles.playerCard,
+                ...(isSelected ? { borderColor: colors.primary, borderWidth: 2 } : {})
+              }}
+              onPress={() => handlePlayerSelect(player, selectedCourse?.tees[0] || null)}
             >
-              <View style={styles.playerInfo as any}>
-                <Text style={styles.playerName as any}>{player.name}</Text>
-                {player.handicapIndex !== undefined && (
-                  <Text style={styles.playerHandicap as any}>
-                    Handicap: {player.handicapIndex}
+              <View style={styles.playerInfo}>
+                <View style={[styles.playerAvatar, { backgroundColor: isSelected ? colors.primary : colors.secondaryLight }]}>
+                  <Text style={[styles.playerInitial, { color: isSelected ? colors.textLight : colors.primary }]}>
+                    {player.name.charAt(0).toUpperCase()}
                   </Text>
-                )}
+                </View>
+                <View style={styles.playerDetails}>
+                  <Text style={[styles.playerName, { color: colors.textPrimary }]}>{player.name}</Text>
+                  {player.handicapIndex !== undefined && (
+                    <Text style={[styles.playerHandicap, { color: colors.textSecondary }]}>
+                      Handicap: {player.handicapIndex < 0 ? '+' : ''}{Math.abs(player.handicapIndex).toFixed(1)}
+                    </Text>
+                  )}
+                </View>
               </View>
-              {isSelected && (
-                <FontAwesome5 name="check-circle" size={20} color={COLORS.primary} />
+              {isSelected && selectedCourse && (
+                <View style={styles.teeSelection}>
+                  <Text style={[styles.teeLabel, { color: colors.textSecondary }]}>Tee:</Text>
+                  <View style={styles.teeOptions}>
+                    {selectedCourse.tees.map(tee => {
+                      const selectedPlayerTee = selectedPlayers.find(p => p.id === player.id)?.selectedTee;
+                      const isTeeSelected = selectedPlayerTee?.id === tee.id;
+                      return (
+                        <TouchableOpacity
+                          key={tee.id}
+                          style={[
+                            styles.teeOption,
+                            { backgroundColor: isTeeSelected ? colors.primary : colors.secondaryLight }
+                          ]}
+                          onPress={() => handlePlayerSelect(player, tee)}
+                        >
+                          <Text style={[
+                            styles.teeText,
+                            { color: isTeeSelected ? colors.textLight : colors.textPrimary }
+                          ]}>
+                            {tee.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
               )}
             </Card>
           );
         })}
       </View>
       
-      {selectedPlayers.length > 0 && (
-        <View style={styles.sectionContainer as any}>
-          <Text style={styles.sectionTitle as any}>Selected Players</Text>
-          {selectedPlayers.map(player => (
-            <Card key={player.id} style={styles.selectedDetailCard as any}>
-              <View style={styles.playerInfo as any}>
-                <Text style={styles.playerName as any}>{player.name}</Text>
-              </View>
-              <View style={styles.teeSelection as any}>
-                <Text style={styles.teeLabel as any}>Tee:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {selectedCourse?.tees.map(tee => (
-                    <TouchableOpacity
-                      key={tee.id}
-                      style={[
-                        styles.teeOption as any,
-                        player.selectedTee?.id === tee.id && styles.selectedTeeOption as any,
-                        { backgroundColor: tee.color },
-                      ]}
-                      onPress={() => handlePlayerSelect(player, tee)}
-                    >
-                      <Text style={styles.teeName as any}>{tee.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </Card>
-          ))}
+      <View style={styles.holeSelectionContainer}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Hole Selection</Text>
+        <View style={styles.holeOptions}>
+          <TouchableOpacity
+            style={[
+              styles.holeOption,
+              holeSelection === 'front9' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => setHoleSelection('front9')}
+          >
+            <Text style={[
+              styles.holeOptionText,
+              { color: holeSelection === 'front9' ? colors.textLight : colors.textPrimary }
+            ]}>
+              Front 9
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.holeOption,
+              holeSelection === 'back9' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => setHoleSelection('back9')}
+          >
+            <Text style={[
+              styles.holeOptionText,
+              { color: holeSelection === 'back9' ? colors.textLight : colors.textPrimary }
+            ]}>
+              Back 9
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.holeOption,
+              holeSelection === 'full18' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => setHoleSelection('full18')}
+          >
+            <Text style={[
+              styles.holeOptionText,
+              { color: holeSelection === 'full18' ? colors.textLight : colors.textPrimary }
+            ]}>
+              Full 18
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.holeOption,
+              holeSelection === 'custom' && { backgroundColor: colors.primary }
+            ]}
+            onPress={() => setHoleSelection('custom')}
+          >
+            <Text style={[
+              styles.holeOptionText,
+              { color: holeSelection === 'custom' ? colors.textLight : colors.textPrimary }
+            ]}>
+              Custom
+            </Text>
+          </TouchableOpacity>
         </View>
-      )}
+        
+        {holeSelection === 'custom' && (
+          <View style={styles.customHoleContainer}>
+            <Text style={[styles.customHoleLabel, { color: colors.textSecondary }]}>Starting Hole:</Text>
+            <TextInput
+              style={[styles.customHoleInput, { 
+                color: colors.textPrimary,
+                borderColor: colors.border,
+                backgroundColor: colors.card
+              }]}
+              value={customStartHole.toString()}
+              onChangeText={(text) => {
+                const hole = parseInt(text);
+                if (!isNaN(hole) && hole >= 1 && hole <= 18) {
+                  setCustomStartHole(hole);
+                }
+              }}
+              keyboardType="number-pad"
+              maxLength={2}
+            />
+          </View>
+        )}
+      </View>
       
-      <View style={styles.navigationButtons as any}>
+      <View style={styles.buttonContainer}>
         <Button
           title="Back"
           variant="outline"
           onPress={() => setStep(1)}
-          style={styles.navigationButton as any}
+          style={styles.backButton}
         />
         <Button
           title="Next"
           onPress={() => setStep(3)}
-          style={styles.navigationButton as any}
           disabled={selectedPlayers.length === 0}
         />
       </View>
@@ -249,125 +349,128 @@ export default function NewRoundScreen() {
   );
 
   const renderGameSelection = () => (
-    <View style={styles.stepContainer as any}>
-      <Text style={styles.stepTitle as any}>Select Games</Text>
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Game Options</Text>
       
-      <View style={styles.sectionContainer as any}>
-        <Text style={styles.sectionTitle as any}>Available Games</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gamesScrollView as any}>
+      <Card style={styles.summaryCard}>
+        <Text style={[styles.summaryTitle, { color: colors.textPrimary }]}>Round Summary</Text>
+        
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Course:</Text>
+          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{selectedCourse?.name}</Text>
+        </View>
+        
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Players:</Text>
+          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{selectedPlayers.length}</Text>
+        </View>
+        
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Holes:</Text>
+          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+            {holeSelection === 'front9' ? 'Front 9' :
+             holeSelection === 'back9' ? 'Back 9' :
+             holeSelection === 'full18' ? 'Full 18' :
+             `Custom (Starting at hole ${customStartHole})`}
+          </Text>
+        </View>
+      </Card>
+      
+      <View style={styles.sectionContainer}>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Select Game Type (Optional)</Text>
+        <View style={styles.gameGrid}>
           {GAME_TYPES.map(game => {
             const isSelected = selectedGames.some(g => g.type === game.type);
             return (
               <TouchableOpacity
                 key={game.type}
                 style={[
-                  styles.gameCard as any,
-                  isSelected && styles.selectedGameCard as any,
+                  styles.gameCard,
+                  { backgroundColor: isSelected ? colors.primary : colors.card },
+                  isSelected ? {} : { borderColor: colors.border, borderWidth: 1 }
                 ]}
                 onPress={() => handleGameSelect(game.type)}
               >
-                <View style={styles.gameIconContainer as any}>
-                  <FontAwesome5 name={game.icon} size={24} color={isSelected ? COLORS.secondary : COLORS.primary} />
-                </View>
+                <FontAwesome5
+                  name={game.icon}
+                  size={24}
+                  color={isSelected ? colors.textLight : colors.primary}
+                  style={styles.gameIcon}
+                />
                 <Text style={[
-                  styles.gameTitle as any,
-                  isSelected && styles.selectedGameTitle as any,
+                  styles.gameName,
+                  { color: isSelected ? colors.textLight : colors.textPrimary }
                 ]}>
                   {game.name}
+                </Text>
+                <Text style={[
+                  styles.gameDescription,
+                  { color: isSelected ? colors.textLight + 'DD' : colors.textSecondary }
+                ]}>
+                  {game.description}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
       
-      {selectedGames.length > 0 && (
-        <View style={styles.sectionContainer as any}>
-          <Text style={styles.sectionTitle as any}>Selected Games</Text>
-          {selectedGames.map(game => (
-            <Card key={game.id} style={styles.selectedGameDetailCard as any}>
-              <View style={styles.gameDetailHeader as any}>
-                <Text style={styles.gameDetailTitle as any}>{
-                  game.type === 'nassau' ? 'Nassau' :
-                  game.type === 'skins' ? 'Skins' :
-                  game.type === 'match-play' ? 'Match Play' :
-                  game.type === 'stableford' ? 'Stableford' :
-                  game.type === 'vegas' ? 'Vegas' :
-                  'Wolf'
-                }</Text>
-                <TouchableOpacity
-                  style={styles.removeButton as any}
-                  onPress={() => {
-                    const updatedGames = selectedGames.filter(g => g.id !== game.id);
-                    dispatch(selectGame({ type: game.type, players: selectedPlayers, stake: 1 }));
-                  }}
-                >
-                  <FontAwesome5 name="times" size={16} color={COLORS.error} />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.gameSettings as any}>
-                <Text style={styles.gameSettingLabel as any}>Stake:</Text>
-                <TextInput
-                  style={styles.gameSettingInput as any}
-                  value={game.stake.toString()}
-                  onChangeText={(value) => {
-                    const stake = parseFloat(value) || 0;
-                    dispatch(selectGame({ type: game.type, players: selectedPlayers, stake }));
-                  }}
-                  keyboardType="numeric"
-                  placeholder="0.00"
-                />
-              </View>
-            </Card>
-          ))}
-        </View>
-      )}
-      
-      <View style={styles.navigationButtons as any}>
+      <View style={styles.buttonContainer}>
         <Button
           title="Back"
           variant="outline"
           onPress={() => setStep(2)}
-          style={styles.navigationButton as any}
+          style={styles.backButton}
         />
         <Button
           title="Start Round"
           onPress={handleStartRound}
-          style={styles.navigationButton as any}
         />
       </View>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container as any}>
-      <View style={styles.stepIndicator as any}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.stepIndicator, { backgroundColor: colors.card, ...shadows.light }]}>
         <View
           style={[
-            styles.stepDot as any,
-            step >= 1 && styles.activeStepDot as any,
+            styles.stepDot,
+            { 
+              backgroundColor: step >= 1 ? colors.primary : colors.secondaryLight,
+              borderColor: colors.border
+            }
           ]}
         >
-          <Text style={styles.stepNumber as any}>1</Text>
+          <Text style={[styles.stepNumber, { color: step >= 1 ? colors.textLight : colors.textPrimary }]}>1</Text>
         </View>
-        <View style={styles.stepLine as any} />
+        <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
         <View
           style={[
-            styles.stepDot as any,
-            step >= 2 && styles.activeStepDot as any,
+            styles.stepDot,
+            { 
+              backgroundColor: step >= 2 ? colors.primary : colors.secondaryLight,
+              borderColor: colors.border
+            }
           ]}
         >
-          <Text style={styles.stepNumber as any}>2</Text>
+          <Text style={[styles.stepNumber, { color: step >= 2 ? colors.textLight : colors.textPrimary }]}>2</Text>
         </View>
-        <View style={styles.stepLine as any} />
+        <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
         <View
           style={[
-            styles.stepDot as any,
-            step >= 3 && styles.activeStepDot as any,
+            styles.stepDot,
+            { 
+              backgroundColor: step >= 3 ? colors.primary : colors.secondaryLight,
+              borderColor: colors.border
+            }
           ]}
         >
-          <Text style={styles.stepNumber as any}>3</Text>
+          <Text style={[styles.stepNumber, { color: step >= 3 ? colors.textLight : colors.textPrimary }]}>3</Text>
         </View>
       </View>
 
@@ -381,7 +484,208 @@ export default function NewRoundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  contentContainer: {
+    padding: SIZES.padding,
+    paddingTop: SIZES.padding / 2,
+  },
+  stepContainer: {
+    flex: 1,
+  },
+  stepTitle: {
+    ...createFontStyle(FONTS.h2),
+    marginBottom: SIZES.padding,
+  },
+  sectionContainer: {
+    marginBottom: SIZES.padding,
+  },
+  sectionTitle: {
+    ...createFontStyle(FONTS.h3),
+    marginBottom: SIZES.base * 1.5,
+  },
+  courseCard: {
+    marginBottom: SIZES.base * 1.5,
+  },
+  courseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+  },
+  courseName: {
+    ...createFontStyle(FONTS.h4),
+  },
+  courseDetails: {
+    ...createFontStyle(FONTS.body4),
+  },
+  selectedCourseCard: {
+    marginBottom: SIZES.padding,
+  },
+  selectedCourseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+  },
+  selectedCourseName: {
+    ...createFontStyle(FONTS.h4),
+  },
+  selectedCourseDetails: {
+    ...createFontStyle(FONTS.body4),
+  },
+  changeText: {
+    ...createFontStyle(FONTS.body4),
+    fontWeight: 'bold',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.base * 1.5,
+  },
+  playerCard: {
+    marginBottom: SIZES.base * 1.5,
+    padding: SIZES.padding / 1.5,
+  },
+  playerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  playerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SIZES.base * 1.5,
+  },
+  playerInitial: {
+    ...createFontStyle(FONTS.h3),
+    fontWeight: 'bold',
+  },
+  playerDetails: {
+    flex: 1,
+  },
+  playerName: {
+    ...createFontStyle(FONTS.h4),
+    marginBottom: 2,
+  },
+  playerHandicap: {
+    ...createFontStyle(FONTS.body5),
+  },
+  teeSelection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.base * 1.5,
+    paddingTop: SIZES.base,
+  },
+  teeLabel: {
+    ...createFontStyle(FONTS.body4),
+    marginRight: SIZES.base,
+  },
+  teeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  teeOption: {
+    paddingHorizontal: SIZES.base,
+    paddingVertical: SIZES.base / 2,
+    borderRadius: SIZES.radius / 2,
+    marginRight: SIZES.base,
+    marginBottom: SIZES.base / 2,
+  },
+  teeText: {
+    ...createFontStyle(FONTS.body5),
+    fontWeight: '500',
+  },
+  holeSelectionContainer: {
+    marginBottom: SIZES.padding,
+  },
+  holeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: SIZES.base,
+  },
+  holeOption: {
+    paddingHorizontal: SIZES.padding / 2,
+    paddingVertical: SIZES.base,
+    borderRadius: SIZES.radius / 2,
+    marginRight: SIZES.base,
+    marginBottom: SIZES.base,
+  },
+  holeOptionText: {
+    ...createFontStyle(FONTS.body4),
+    fontWeight: '500',
+  },
+  customHoleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.base,
+  },
+  customHoleLabel: {
+    ...createFontStyle(FONTS.body4),
+    marginRight: SIZES.base,
+  },
+  customHoleInput: {
+    width: 60,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: SIZES.radius / 2,
+    paddingHorizontal: SIZES.base,
+    textAlign: 'center',
+    ...createFontStyle(FONTS.body4),
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.padding,
+  },
+  backButton: {
+    width: '48%',
+  },
+  summaryCard: {
+    marginBottom: SIZES.padding,
+  },
+  summaryTitle: {
+    ...createFontStyle(FONTS.h3),
+    marginBottom: SIZES.base * 1.5,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    marginBottom: SIZES.base,
+  },
+  summaryLabel: {
+    ...createFontStyle(FONTS.body4),
+    width: 80,
+  },
+  summaryValue: {
+    ...createFontStyle(FONTS.body4),
+    flex: 1,
+    fontWeight: '500',
+  },
+  gameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gameCard: {
+    width: '48%',
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding / 1.5,
+    marginBottom: SIZES.base * 2,
+    alignItems: 'center',
+  },
+  gameIcon: {
+    marginBottom: SIZES.base,
+  },
+  gameName: {
+    ...createFontStyle(FONTS.h4),
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  gameDescription: {
+    ...createFontStyle(FONTS.body5),
+    textAlign: 'center',
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -389,274 +693,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SIZES.padding,
     paddingHorizontal: SIZES.padding * 2,
-    backgroundColor: COLORS.secondary,
-    ...SHADOWS.light,
+    borderRadius: SIZES.radius,
+    marginBottom: SIZES.padding,
   },
   stepDot: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: COLORS.secondaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  activeStepDot: {
-    backgroundColor: COLORS.primary,
-  },
-  stepNumber: {
-    ...createFontStyle(FONTS.body4),
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
   },
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: COLORS.border,
     marginHorizontal: SIZES.base,
   },
-  stepContainer: {
-    padding: SIZES.padding,
-  },
-  stepTitle: {
-    ...createFontStyle(FONTS.h2),
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.padding,
-  },
-  sectionContainer: {
-    marginBottom: SIZES.padding,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  sectionTitle: {
-    ...createFontStyle(FONTS.h3),
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.base,
-  },
-  courseCard: {
-    marginBottom: SIZES.base,
-  },
-  courseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base / 2,
-  },
-  courseName: {
-    ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
-  },
-  courseDetails: {
+  stepNumber: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
-  },
-  playerCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  selectedPlayerCard: {
-    borderColor: COLORS.primary,
-    borderWidth: 1,
-  },
-  playerInfo: {
-    flex: 1,
-  },
-  playerName: {
-    ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
-  },
-  playerHandicap: {
-    ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
-  },
-  selectedDetailCard: {
-    marginBottom: SIZES.base,
-  },
-  teeSelection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SIZES.base,
-  },
-  teeLabel: {
-    ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
-    marginRight: SIZES.base,
-  },
-  teeOption: {
-    paddingHorizontal: SIZES.base,
-    paddingVertical: SIZES.base / 2,
-    borderRadius: SIZES.radius / 2,
-    marginRight: SIZES.base,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  selectedTeeOption: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-  },
-  teeName: {
-    ...createFontStyle(FONTS.body5),
-    color: COLORS.secondary,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
-  navigationButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SIZES.padding,
-  },
-  navigationButton: {
-    flex: 1,
-    marginHorizontal: SIZES.base,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  optionCard: {
-    width: '48%',
-    backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.base * 2,
-    ...SHADOWS.light,
-  },
-  selectedOptionCard: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-  },
-  optionTitle: {
-    ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.base / 2,
-  },
-  optionDescription: {
-    ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
-  },
-  customHoleContainer: {
-    marginTop: SIZES.base,
-  },
-  customHoleLabel: {
-    ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.base,
-  },
-  customHoleOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  customHoleOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    margin: SIZES.base / 2,
-    ...SHADOWS.light,
-  },
-  selectedCustomHoleOption: {
-    backgroundColor: COLORS.primary,
-  },
-  customHoleText: {
-    ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
-  },
-  selectedCustomHoleText: {
-    color: COLORS.secondary,
-  },
-  gamesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  gameCard: {
-    width: '48%',
-    backgroundColor: COLORS.secondary,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: SIZES.base * 2,
-    ...SHADOWS.light,
-    position: 'relative',
-  },
-  selectedGameCard: {
-    borderColor: COLORS.primary,
-    borderWidth: 1,
-  },
-  gameTitle: {
-    ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.base / 2,
-  },
-  gameDescription: {
-    ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
-  },
-  selectedGameIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gameIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  selectedGameTitle: {
-    color: COLORS.secondary,
-  },
-  selectedGameDetailCard: {
-    marginBottom: SIZES.base,
-  },
-  gameDetailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  gameDetailTitle: {
-    ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
-  },
-  removeButton: {
-    padding: SIZES.base,
-  },
-  gameSettings: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: SIZES.base,
-  },
-  gameSettingLabel: {
-    ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
-  },
-  gameSettingInput: {
-    width: 80,
-    padding: SIZES.base,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: SIZES.radius,
-  },
-  gamesScrollView: {
-    marginBottom: SIZES.padding,
-  },
-}) as Record<string, StyleProp<ViewStyle> | StyleProp<TextStyle> | StyleProp<ImageStyle>>; 
+}); 

@@ -2,7 +2,8 @@ import { Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export const COLORS = {
+// Light theme colors
+export const LIGHT_COLORS = {
   // Primary colors
   primary: '#0A5F38', // Dark green
   primaryLight: '#1A7D4E',
@@ -51,6 +52,59 @@ export const COLORS = {
   tee: '#8D6E63',
 };
 
+// Dark theme colors
+export const DARK_COLORS = {
+  // Primary colors
+  primary: '#1A7D4E', // Lighter green for better contrast
+  primaryLight: '#2A8D5E',
+  primaryDark: '#0A5F38',
+  
+  // Secondary colors
+  secondary: '#121212', // Dark background
+  secondaryLight: '#1E1E1E',
+  secondaryDark: '#0A0A0A',
+  
+  // Accent colors
+  accent: '#FFD700', // Gold (same)
+  accentLight: '#FFEB3B',
+  accentDark: '#FFC107',
+  
+  // Status colors
+  success: '#66BB6A', // Lighter green
+  warning: '#FFA726', // Lighter orange
+  error: '#EF5350', // Lighter red
+  info: '#42A5F5', // Lighter blue
+  
+  // Text colors
+  textPrimary: '#E0E0E0', // Light grey
+  textSecondary: '#AAAAAA', // Medium grey
+  textLight: '#FFFFFF', // White
+  textDark: '#121212', // Dark
+  
+  // Background colors
+  background: '#121212', // Dark background
+  card: '#1E1E1E', // Slightly lighter than background
+  
+  // Border colors
+  border: '#333333', // Dark grey
+  
+  // Transparent colors
+  transparent: 'transparent',
+  transparentBlack: 'rgba(0, 0, 0, 0.5)',
+  transparentWhite: 'rgba(255, 255, 255, 0.5)',
+  
+  // Golf-specific colors
+  fairway: '#558B2F', // Darker green
+  rough: '#33691E', // Even darker green
+  sand: '#F9A825', // Darker yellow
+  water: '#0277BD', // Darker blue
+  green: '#1B5E20', // Darker green
+  tee: '#6D4C41', // Darker brown
+};
+
+// Default to light colors
+export const COLORS = LIGHT_COLORS;
+
 export const SIZES = {
   // Global sizes
   base: 8,
@@ -91,38 +145,46 @@ export const FONTS = {
   body5: { fontFamily: 'System', fontSize: SIZES.body5, lineHeight: 18 },
 };
 
-export const SHADOWS = {
+// Function to get shadow based on theme
+export const getShadows = (isDarkMode: boolean) => ({
   light: {
-    shadowColor: COLORS.textDark,
+    shadowColor: isDarkMode ? DARK_COLORS.textLight : LIGHT_COLORS.textDark,
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: isDarkMode ? 0.2 : 0.1,
     shadowRadius: 3,
     elevation: 1,
   },
   medium: {
-    shadowColor: COLORS.textDark,
+    shadowColor: isDarkMode ? DARK_COLORS.textLight : LIGHT_COLORS.textDark,
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: isDarkMode ? 0.25 : 0.15,
     shadowRadius: 5,
     elevation: 3,
   },
   dark: {
-    shadowColor: COLORS.textDark,
+    shadowColor: isDarkMode ? DARK_COLORS.textLight : LIGHT_COLORS.textDark,
     shadowOffset: {
       width: 0,
       height: 6,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: isDarkMode ? 0.3 : 0.2,
     shadowRadius: 7,
     elevation: 5,
   },
-};
+});
+
+// Default shadows for backward compatibility
+export const SHADOWS = getShadows(false);
+
+// Function to get theme colors
+export const getThemeColors = (isDarkMode: boolean) => 
+  isDarkMode ? DARK_COLORS : LIGHT_COLORS;
 
 const appTheme = { COLORS, SIZES, FONTS, SHADOWS };
 

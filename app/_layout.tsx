@@ -5,8 +5,38 @@ import { store } from '../store';
 import { supabase } from '../lib/supabase';
 import { getSession } from '../store/slices/authSlice';
 import { StatusBar } from 'expo-status-bar';
-import { COLORS } from '../constants/theme';
+import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 import 'react-native-url-polyfill/auto';
+
+// Inner layout component that has access to theme
+function AppLayout() {
+  const { colors, isDarkMode } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.primary} />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: colors.textLight,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: 'BirdieBank' }} />
+        <Stack.Screen name="auth/login" options={{ title: 'Login', headerShown: false }} />
+        <Stack.Screen name="auth/register" options={{ title: 'Register', headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </>
+  );
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -31,26 +61,9 @@ export default function RootLayout() {
 
   return (
     <Provider store={store}>
-      <StatusBar style="light" backgroundColor={COLORS.primary} />
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: COLORS.primary,
-          },
-          headerTintColor: COLORS.secondary,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-          contentStyle: {
-            backgroundColor: COLORS.background,
-          },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: 'BirdieBank' }} />
-        <Stack.Screen name="auth/login" options={{ title: 'Login', headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ title: 'Register', headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
     </Provider>
   );
 }

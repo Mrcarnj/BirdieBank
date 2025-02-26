@@ -8,8 +8,9 @@ import {
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
-import { COLORS, FONTS, SIZES, SHADOWS } from '../constants/theme';
+import { FONTS, SIZES } from '../constants/theme';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from './ThemeProvider';
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -37,43 +38,20 @@ const Button: React.FC<ButtonProps> = ({
   onPress,
   ...rest
 }) => {
+  const { colors } = useTheme();
+
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onPress();
+    if (!disabled && !loading) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }
   };
 
   const getButtonStyle = (): ViewStyle => {
-    let buttonStyle: ViewStyle = {};
-
-    // Variant styles
-    switch (variant) {
-      case 'primary':
-        buttonStyle = {
-          backgroundColor: COLORS.primary,
-          borderWidth: 0,
-        };
-        break;
-      case 'secondary':
-        buttonStyle = {
-          backgroundColor: COLORS.secondary,
-          borderWidth: 0,
-        };
-        break;
-      case 'outline':
-        buttonStyle = {
-          backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: COLORS.primary,
-        };
-        break;
-      case 'text':
-        buttonStyle = {
-          backgroundColor: 'transparent',
-          borderWidth: 0,
-          paddingHorizontal: 0,
-        };
-        break;
-    }
+    let buttonStyle: ViewStyle = {
+      ...styles.button,
+      opacity: disabled ? 0.6 : 1,
+    };
 
     // Size styles
     switch (size) {
@@ -81,34 +59,59 @@ const Button: React.FC<ButtonProps> = ({
         buttonStyle = {
           ...buttonStyle,
           paddingVertical: SIZES.base,
-          paddingHorizontal: SIZES.base * 2,
-          borderRadius: SIZES.radius - 4,
-        };
-        break;
-      case 'medium':
-        buttonStyle = {
-          ...buttonStyle,
-          paddingVertical: SIZES.base * 1.5,
-          paddingHorizontal: SIZES.base * 3,
-          borderRadius: SIZES.radius,
+          paddingHorizontal: SIZES.padding / 2,
+          borderRadius: SIZES.radius / 1.5,
         };
         break;
       case 'large':
         buttonStyle = {
           ...buttonStyle,
-          paddingVertical: SIZES.base * 2,
-          paddingHorizontal: SIZES.base * 4,
-          borderRadius: SIZES.radius,
+          paddingVertical: SIZES.padding / 1.5,
+          paddingHorizontal: SIZES.padding,
+          borderRadius: SIZES.radius * 1.5,
         };
         break;
+      default:
+        buttonStyle = {
+          ...buttonStyle,
+          paddingVertical: SIZES.padding / 2,
+          paddingHorizontal: SIZES.padding,
+          borderRadius: SIZES.radius,
+        };
     }
 
-    // Disabled style
-    if (disabled) {
-      buttonStyle = {
-        ...buttonStyle,
-        opacity: 0.5,
-      };
+    // Variant styles
+    switch (variant) {
+      case 'primary':
+        buttonStyle = {
+          ...buttonStyle,
+          backgroundColor: colors.primary,
+        };
+        break;
+      case 'secondary':
+        buttonStyle = {
+          ...buttonStyle,
+          backgroundColor: colors.secondary,
+          borderWidth: 1,
+          borderColor: colors.primary,
+        };
+        break;
+      case 'outline':
+        buttonStyle = {
+          ...buttonStyle,
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderColor: colors.primary,
+        };
+        break;
+      case 'text':
+        buttonStyle = {
+          ...buttonStyle,
+          backgroundColor: 'transparent',
+          paddingHorizontal: 0,
+          paddingVertical: 0,
+        };
+        break;
     }
 
     return buttonStyle;
@@ -116,56 +119,54 @@ const Button: React.FC<ButtonProps> = ({
 
   const getTextStyle = (): TextStyle => {
     let textStyleObj: TextStyle = {
-      ...FONTS.body4,
-      fontWeight: '600',
+      ...styles.text,
     };
 
-    // Variant text styles
-    switch (variant) {
-      case 'primary':
-        textStyleObj = {
-          ...textStyleObj,
-          color: COLORS.secondary,
-        };
-        break;
-      case 'secondary':
-        textStyleObj = {
-          ...textStyleObj,
-          color: COLORS.textPrimary,
-        };
-        break;
-      case 'outline':
-        textStyleObj = {
-          ...textStyleObj,
-          color: COLORS.primary,
-        };
-        break;
-      case 'text':
-        textStyleObj = {
-          ...textStyleObj,
-          color: COLORS.primary,
-        };
-        break;
-    }
-
-    // Size text styles
+    // Size styles
     switch (size) {
       case 'small':
         textStyleObj = {
           ...textStyleObj,
-          ...FONTS.body5,
-        };
-        break;
-      case 'medium':
-        textStyleObj = {
-          ...textStyleObj,
-          ...FONTS.body4,
+          fontSize: FONTS.body5.fontSize,
         };
         break;
       case 'large':
         textStyleObj = {
           ...textStyleObj,
-          ...FONTS.body3,
+          fontSize: FONTS.body3.fontSize,
+        };
+        break;
+      default:
+        textStyleObj = {
+          ...textStyleObj,
+          fontSize: FONTS.body4.fontSize,
+        };
+    }
+
+    // Variant styles
+    switch (variant) {
+      case 'primary':
+        textStyleObj = {
+          ...textStyleObj,
+          color: colors.textLight,
+        };
+        break;
+      case 'secondary':
+        textStyleObj = {
+          ...textStyleObj,
+          color: colors.primary,
+        };
+        break;
+      case 'outline':
+        textStyleObj = {
+          ...textStyleObj,
+          color: colors.primary,
+        };
+        break;
+      case 'text':
+        textStyleObj = {
+          ...textStyleObj,
+          color: colors.primary,
         };
         break;
     }
@@ -175,21 +176,21 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.button, getButtonStyle(), style]}
+      style={[getButtonStyle(), style]}
       onPress={handlePress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
       {...rest}
     >
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? COLORS.secondary : COLORS.primary}
+          color={variant === 'primary' ? colors.textLight : colors.primary}
         />
       ) : (
         <>
           {icon && iconPosition === 'left' && icon}
-          <Text style={[styles.text, getTextStyle(), textStyle]}>{title}</Text>
+          <Text style={[getTextStyle(), textStyle]}>{title}</Text>
           {icon && iconPosition === 'right' && icon}
         </>
       )}
@@ -202,10 +203,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.medium,
   },
   text: {
-    marginHorizontal: SIZES.base,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

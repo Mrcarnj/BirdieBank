@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
+import { FONTS, SIZES } from '../../constants/theme';
 import { RootState, AppDispatch } from '../../store';
 import { fetchPastRounds } from '../../store/slices/roundSlice';
 import { fetchCourses } from '../../store/slices/courseSlice';
@@ -22,12 +22,14 @@ import Button from '../../components/Button';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createFontStyle } from '../../utils/styleUtils';
+import { useTheme } from '../../components/ThemeProvider';
 
 export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { pastRounds, currentRound } = useSelector((state: RootState) => state.round);
   const { courses } = useSelector((state: RootState) => state.course);
+  const { colors, shadows } = useTheme();
 
   useEffect(() => {
     if (user) {
@@ -39,26 +41,26 @@ export default function HomeScreen() {
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.sectionTitle}>Start a Round</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Start a Round</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
-          style={[styles.quickActionItem, { backgroundColor: COLORS.primary }]}
+          style={[styles.quickActionItem, { backgroundColor: colors.primary }]}
           onPress={() => router.push('/(tabs)/new-round')}
         >
           <View style={[styles.quickActionIconContainer, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-            <FontAwesome5 name="golf-ball" size={24} color={COLORS.secondary} />
+            <FontAwesome5 name="golf-ball" size={24} color={colors.textLight} />
           </View>
-          <Text style={[styles.quickActionText, { color: COLORS.secondary }]}>Start New Round</Text>
+          <Text style={[styles.quickActionText, { color: colors.textLight }]}>Start New Round</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.quickActionItem}
+          style={[styles.quickActionItem, { backgroundColor: colors.card, ...shadows.medium }]}
           onPress={() => router.push('/courses/index')}
         >
-          <View style={styles.quickActionIconContainer}>
-            <FontAwesome5 name="flag" size={24} color={COLORS.primary} />
+          <View style={[styles.quickActionIconContainer, { backgroundColor: colors.secondaryLight }]}>
+            <FontAwesome5 name="flag" size={24} color={colors.primary} />
           </View>
-          <Text style={styles.quickActionText}>Find Course</Text>
+          <Text style={[styles.quickActionText, { color: colors.textPrimary }]}>Find Course</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -70,15 +72,15 @@ export default function HomeScreen() {
     return (
       <Card variant="elevated" style={styles.currentRoundCard}>
         <View style={styles.currentRoundHeader}>
-          <Text style={styles.currentRoundTitle}>Current Round</Text>
-          <FontAwesome5 name="golf-ball" size={20} color={COLORS.primary} />
+          <Text style={[styles.currentRoundTitle, { color: colors.primary }]}>Current Round</Text>
+          <FontAwesome5 name="golf-ball" size={20} color={colors.primary} />
         </View>
         
         <View style={styles.currentRoundInfo}>
-          <Text style={styles.currentRoundCourseName}>
+          <Text style={[styles.currentRoundCourseName, { color: colors.textPrimary }]}>
             {currentRound.course?.name || 'Unknown Course'}
           </Text>
-          <Text style={styles.currentRoundDetails}>
+          <Text style={[styles.currentRoundDetails, { color: colors.textSecondary }]}>
             {currentRound.players.length} Players • {
               currentRound.holeSelection === 'front9' ? 'Front 9' :
               currentRound.holeSelection === 'back9' ? 'Back 9' :
@@ -101,7 +103,7 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.recentRoundsContainer}>
-        <Text style={styles.sectionTitle}>Recent Rounds</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recent Rounds</Text>
         {pastRounds.slice(0, 3).map((round) => (
           <Card
             key={round.id}
@@ -109,23 +111,23 @@ export default function HomeScreen() {
             style={styles.recentRoundCard}
           >
             <View style={styles.recentRoundHeader}>
-              <Text style={styles.recentRoundCourseName}>
+              <Text style={[styles.recentRoundCourseName, { color: colors.textPrimary }]}>
                 {round.course?.name || 'Unknown Course'}
               </Text>
-              <Text style={styles.recentRoundDate}>
+              <Text style={[styles.recentRoundDate, { color: colors.textSecondary }]}>
                 {new Date(round.date).toLocaleDateString()}
               </Text>
             </View>
             <View style={styles.recentRoundDetails}>
               <View style={styles.recentRoundInfo}>
-                <FontAwesome5 name="users" size={14} color={COLORS.textSecondary} style={styles.recentRoundIcon} />
-                <Text style={styles.recentRoundPlayers}>
+                <FontAwesome5 name="users" size={14} color={colors.textSecondary} style={styles.recentRoundIcon} />
+                <Text style={[styles.recentRoundPlayers, { color: colors.textSecondary }]}>
                   {round.players.length} Players
                 </Text>
               </View>
               <View style={styles.recentRoundInfo}>
-                <FontAwesome5 name="flag" size={14} color={COLORS.textSecondary} style={styles.recentRoundIcon} />
-                <Text style={styles.recentRoundType}>
+                <FontAwesome5 name="flag" size={14} color={colors.textSecondary} style={styles.recentRoundIcon} />
+                <Text style={[styles.recentRoundType, { color: colors.textSecondary }]}>
                   {round.holeSelection === 'front9' ? 'Front 9' :
                    round.holeSelection === 'back9' ? 'Back 9' :
                    round.holeSelection === 'full18' ? 'Full 18' : 'Custom'}
@@ -152,7 +154,7 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.nearbyCoursesContainer}>
-        <Text style={styles.sectionTitle}>Nearby Courses</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Nearby Courses</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -161,7 +163,7 @@ export default function HomeScreen() {
           {courses.slice(0, 5).map((course) => (
             <TouchableOpacity
               key={course.id}
-              style={styles.courseCard}
+              style={[styles.courseCard, { backgroundColor: colors.card, ...shadows.medium }]}
               onPress={() => router.push(`/courses/${course.id}` as any)}
             >
               {course.imageUrl ? (
@@ -171,15 +173,15 @@ export default function HomeScreen() {
                   onError={() => {/* Handle image load error silently */}}
                 />
               ) : (
-                <View style={[styles.courseImage, styles.courseImageFallback]}>
-                  <Ionicons name="golf" size={40} color={COLORS.primary} />
+                <View style={[styles.courseImage, styles.courseImageFallback, { backgroundColor: colors.secondaryLight }]}>
+                  <Ionicons name="golf" size={40} color={colors.primary} />
                 </View>
               )}
               <View style={styles.courseInfo}>
-                <Text style={styles.courseName} numberOfLines={1}>
+                <Text style={[styles.courseName, { color: colors.textPrimary }]} numberOfLines={1}>
                   {course.name}
                 </Text>
-                <Text style={styles.courseDetails}>
+                <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
                   {course.holes.length} holes
                 </Text>
               </View>
@@ -199,47 +201,47 @@ export default function HomeScreen() {
 
   return (
     <ScrollView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: colors.background }]} 
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, {user?.name || 'Golfer'}!</Text>
-        <Text style={styles.subGreeting}>Ready for your next round?</Text>
+        <Text style={[styles.greeting, { color: colors.textPrimary }]}>Hello, {user?.name || 'Golfer'}!</Text>
+        <Text style={[styles.subGreeting, { color: colors.textSecondary }]}>Ready for your next round?</Text>
       </View>
 
       {/* Quick Access Links */}
       <View style={styles.quickAccessContainer}>
-        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Quick Access</Text>
         <View style={styles.quickAccessGrid}>
           <TouchableOpacity 
             style={styles.quickAccessItem}
             onPress={() => router.push('/courses')}
           >
-            <View style={styles.quickAccessIconContainer}>
-              <FontAwesome5 name="flag" size={24} color={COLORS.primary} />
+            <View style={[styles.quickAccessIconContainer, { backgroundColor: colors.card, ...shadows.medium }]}>
+              <FontAwesome5 name="flag" size={24} color={colors.primary} />
             </View>
-            <Text style={styles.quickAccessText}>Courses</Text>
+            <Text style={[styles.quickAccessText, { color: colors.textPrimary }]}>Courses</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.quickAccessItem}
             onPress={() => router.push('/players')}
           >
-            <View style={styles.quickAccessIconContainer}>
-              <FontAwesome5 name="users" size={24} color={COLORS.primary} />
+            <View style={[styles.quickAccessIconContainer, { backgroundColor: colors.card, ...shadows.medium }]}>
+              <FontAwesome5 name="users" size={24} color={colors.primary} />
             </View>
-            <Text style={styles.quickAccessText}>Players</Text>
+            <Text style={[styles.quickAccessText, { color: colors.textPrimary }]}>Players</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.quickAccessItem}
             onPress={() => router.push('/history')}
           >
-            <View style={styles.quickAccessIconContainer}>
-              <FontAwesome5 name="history" size={24} color={COLORS.primary} />
+            <View style={[styles.quickAccessIconContainer, { backgroundColor: colors.card, ...shadows.medium }]}>
+              <FontAwesome5 name="history" size={24} color={colors.primary} />
             </View>
-            <Text style={styles.quickAccessText}>History</Text>
+            <Text style={[styles.quickAccessText, { color: colors.textPrimary }]}>History</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -255,7 +257,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   contentContainer: {
     paddingHorizontal: SIZES.padding,
@@ -267,16 +268,13 @@ const styles = StyleSheet.create({
   },
   greeting: {
     ...createFontStyle(FONTS.h2),
-    color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
   subGreeting: {
     ...createFontStyle(FONTS.body3),
-    color: COLORS.textSecondary,
   },
   sectionTitle: {
     ...createFontStyle(FONTS.h3),
-    color: COLORS.textPrimary,
     marginBottom: SIZES.base * 1.5,
   },
   quickActionsContainer: {
@@ -289,34 +287,27 @@ const styles = StyleSheet.create({
   },
   quickActionItem: {
     width: '48%',
-    backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     marginBottom: SIZES.base * 2,
     alignItems: 'center',
-    ...SHADOWS.medium,
   },
   quickActionIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.secondaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SIZES.base * 1.5,
-    ...SHADOWS.light,
   },
   quickActionText: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   currentRoundCard: {
-    backgroundColor: COLORS.secondary,
     marginBottom: SIZES.padding * 1.5,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    ...SHADOWS.medium,
   },
   currentRoundHeader: {
     flexDirection: 'row',
@@ -326,19 +317,16 @@ const styles = StyleSheet.create({
   },
   currentRoundTitle: {
     ...createFontStyle(FONTS.h3),
-    color: COLORS.primary,
   },
   currentRoundInfo: {
     marginBottom: SIZES.base * 2,
   },
   currentRoundCourseName: {
     ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
   currentRoundDetails: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
   },
   continueButton: {
     marginTop: SIZES.base,
@@ -348,10 +336,8 @@ const styles = StyleSheet.create({
   },
   recentRoundCard: {
     marginBottom: SIZES.base * 1.5,
-    backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
-    ...SHADOWS.medium,
   },
   recentRoundHeader: {
     flexDirection: 'row',
@@ -361,11 +347,9 @@ const styles = StyleSheet.create({
   },
   recentRoundCourseName: {
     ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
   },
   recentRoundDate: {
     ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
   },
   recentRoundDetails: {
     flexDirection: 'row',
@@ -380,11 +364,9 @@ const styles = StyleSheet.create({
   },
   recentRoundPlayers: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
   },
   recentRoundType: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
   },
   viewAllButton: {
     marginTop: SIZES.padding,
@@ -400,16 +382,13 @@ const styles = StyleSheet.create({
     width: 220,
     marginRight: SIZES.base * 2,
     borderRadius: SIZES.radius,
-    backgroundColor: COLORS.secondary,
     overflow: 'hidden',
-    ...SHADOWS.medium,
   },
   courseImage: {
     width: '100%',
     height: 130,
   },
   courseImageFallback: {
-    backgroundColor: COLORS.secondaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -418,12 +397,10 @@ const styles = StyleSheet.create({
   },
   courseName: {
     ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
   courseDetails: {
     ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
   },
   quickAccessContainer: {
     marginBottom: SIZES.padding * 1.5,
@@ -441,15 +418,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SIZES.base * 1.5,
-    ...SHADOWS.medium,
   },
   quickAccessText: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textPrimary,
     fontWeight: '500',
   },
 }); 

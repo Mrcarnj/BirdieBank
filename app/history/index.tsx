@@ -29,11 +29,11 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.secondary,
+    borderBottomColor: COLORS.border,
   },
   title: {
     ...createFontStyle('bold', 18),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     marginBottom: 8,
   },
   filterContainer: {
@@ -46,16 +46,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 8,
     backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   filterButtonActive: {
     backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterText: {
     ...createFontStyle('regular', 12),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: COLORS.textLight,
     ...createFontStyle('bold', 12),
   },
   loadingContainer: {
@@ -65,7 +68,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     ...createFontStyle('medium', 14),
   },
   emptyContainer: {
@@ -76,12 +79,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...createFontStyle('bold', 18),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     marginTop: 16,
   },
   emptySubtext: {
     ...createFontStyle('regular', 14),
-    color: COLORS.secondary,
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -93,12 +96,12 @@ const styles = StyleSheet.create({
   },
   listHeaderText: {
     ...createFontStyle('regular', 14),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   listHeaderDivider: {
     height: 1,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.border,
   },
   roundItem: {
     marginBottom: 16,
@@ -116,12 +119,12 @@ const styles = StyleSheet.create({
   },
   courseName: {
     ...createFontStyle('bold', 14),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   roundDate: {
     ...createFontStyle('regular', 12),
-    color: COLORS.secondary,
+    color: COLORS.textSecondary,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -134,7 +137,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.border,
     marginVertical: 16,
   },
   roundDetails: {
@@ -148,12 +151,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     ...createFontStyle('regular', 12),
-    color: COLORS.secondary,
+    color: COLORS.textSecondary,
     marginBottom: 2,
   },
   detailValue: {
     ...createFontStyle('medium', 14),
-    color: COLORS.secondary,
+    color: COLORS.textPrimary,
   },
   parScore: {
     ...createFontStyle('regular', 12),
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    borderTopColor: COLORS.secondary,
+    borderTopColor: COLORS.border,
     paddingTop: 16,
   },
   actionButton: {
@@ -269,7 +272,7 @@ export default function HistoryScreen() {
             <View style={styles.roundInfo}>
               <Text style={styles.courseName}>{item.course?.name || 'Unknown Course'}</Text>
               <Text style={styles.roundDate}>
-                <Ionicons name="calendar-outline" size={14} color={COLORS.secondary} /> {formattedDate} • {formattedTime}
+                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} /> {formattedDate} • {formattedTime}
               </Text>
             </View>
             <View style={[styles.statusBadge, { 
@@ -340,7 +343,7 @@ export default function HistoryScreen() {
             {!item.isCompleted && (
               <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={() => router.push('/round')}
+                onPress={() => router.push('/rounds' as any)}
               >
                 <Ionicons name="play-outline" size={18} color={COLORS.success} />
                 <Text style={[styles.actionText, { color: COLORS.success }]}>Continue</Text>
@@ -368,7 +371,7 @@ export default function HistoryScreen() {
           headerStyle: {
             backgroundColor: COLORS.primary,
           },
-          headerTintColor: COLORS.secondary,
+          headerTintColor: COLORS.textLight,
           headerTitleStyle: {
             fontWeight: 'bold',
           },
