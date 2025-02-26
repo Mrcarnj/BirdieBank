@@ -1,50 +1,137 @@
-# Welcome to your Expo app 👋
+# BirdieBank - Golf Score Tracking App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BirdieBank is a comprehensive golf score tracking application built with React Native and Expo. It allows golfers to track their rounds, manage players, select courses, and play various golf gambling games.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **User Authentication**: Secure login and registration via Supabase
+- **Course Management**: Browse and select from a database of golf courses
+- **Geolocation**: Find nearby golf courses based on your current location
+- **Player Management**: Add and manage players, including guest players
+- **Tee Selection**: Choose different tees for each player
+- **Hole Selection**: Play Front 9, Back 9, Full 18, or custom starting hole
+- **Score Tracking**: Easy-to-use scorecard interface for tracking scores
+- **Game Types**: Support for various golf gambling games (Nassau, Skins, Match Play, etc.)
+- **Round History**: View past rounds and performance statistics
+- **Round Summary**: Detailed end-of-round summary with individual scorecards
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+- **React Native**: Cross-platform mobile framework
+- **Expo**: Development platform for React Native
+- **TypeScript**: Type-safe JavaScript
+- **Redux Toolkit**: State management
+- **Expo Router**: File-based routing system
+- **Supabase**: Backend as a Service for authentication and database
+- **Expo Location**: Geolocation services
+- **Expo Haptics**: Haptic feedback for better user experience
 
-   ```bash
-    npx expo start
-   ```
+## Getting Started
 
-In the output, you'll find options to open the app in a
+### Prerequisites
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Node.js (v14 or later)
+- npm or yarn
+- Expo CLI
+- Supabase account
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Installation
 
-## Get a fresh project
-
-When you're ready, run:
-
+1. Clone the repository:
 ```bash
-npm run reset-project
+git clone https://github.com/yourusername/birdiebank.git
+cd birdiebank
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
-## Learn more
+3. Create a `.env` file in the root directory with your Supabase credentials:
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. Update the Supabase configuration in `lib/supabase.ts` with your credentials.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+5. Start the development server:
+```bash
+npx expo start
+```
 
-## Join the community
+## Project Structure
 
-Join our community of developers creating universal apps.
+```
+birdiebank/
+├── app/                    # Expo Router app directory
+│   ├── (tabs)/             # Tab navigation screens
+│   ├── auth/               # Authentication screens
+│   ├── rounds/             # Round details screens
+│   ├── courses/            # Course details screens
+│   └── _layout.tsx         # Root layout component
+├── assets/                 # Static assets
+├── components/             # Reusable components
+├── constants/              # App constants and theme
+├── lib/                    # Utility libraries
+├── store/                  # Redux store and slices
+│   └── slices/             # Redux slices for state management
+└── types/                  # TypeScript type definitions
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Database Schema
+
+### Users
+- id (UUID)
+- email (String)
+- created_at (Timestamp)
+
+### Players
+- id (UUID)
+- userId (UUID, Foreign Key to Users)
+- name (String)
+- handicapIndex (Number, Optional)
+- profileImageUrl (String, Optional)
+- isGuest (Boolean)
+
+### Courses
+- id (UUID)
+- name (String)
+- location (JSON with latitude, longitude, address)
+- tees (JSON Array)
+- holes (JSON Array)
+- imageUrl (String, Optional)
+
+### Rounds
+- id (UUID)
+- userId (UUID, Foreign Key to Users)
+- courseId (UUID, Foreign Key to Courses)
+- date (Timestamp)
+- players (JSON Array)
+- holeSelection (String: 'front9', 'back9', 'full18', 'custom')
+- customStartHole (Number, Optional)
+- scores (JSON Array)
+- isCompleted (Boolean)
+- games (JSON Array, Optional)
+- weather (JSON, Optional)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Golf course data provided by [source]
+- Icons from FontAwesome
+- Design inspiration from [source]

@@ -1,39 +1,56 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { Provider } from 'react-redux';
+import { store } from '../store';
+import { supabase } from '../lib/supabase';
+import { getSession } from '../store/slices/authSlice';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import { COLORS } from '../constants/theme';
+import 'react-native-url-polyfill/auto';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    // Set up Supabase auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          store.dispatch(getSession());
+        } else if (event === 'SIGNED_OUT') {
+          store.dispatch(getSession());
+        }
+      }
+    );
 
-  if (!loaded) {
-    return null;
-  }
+    // Check for existing session on app load
+    store.dispatch(getSession());
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <Provider store={store}>
+      <StatusBar style="light" backgroundColor={COLORS.primary} />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: COLORS.primary,
+          },
+          headerTintColor: COLORS.secondary,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          contentStyle: {
+            backgroundColor: COLORS.background,
+          },
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: 'BirdieBank' }} />
+        <Stack.Screen name="auth/login" options={{ title: 'Login', headerShown: false }} />
+        <Stack.Screen name="auth/register" options={{ title: 'Register', headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </Provider>
   );
 }
