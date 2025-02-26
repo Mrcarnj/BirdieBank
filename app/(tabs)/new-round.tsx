@@ -6,12 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 import { RootState, AppDispatch } from '../../store';
-import { fetchCourses, fetchNearbyCourses, selectCourse } from '../../store/slices/courseSlice';
-import { fetchPlayers, selectPlayer, addGuestPlayer } from '../../store/slices/playerSlice';
+import { Course, fetchCourses, fetchNearbyCourses, selectCourse, Tee } from '../../store/slices/courseSlice';
+import { fetchPlayers, selectPlayer, addGuestPlayer, Player } from '../../store/slices/playerSlice';
 import { startNewRound } from '../../store/slices/roundSlice';
 import { selectGame } from '../../store/slices/gameSlice';
 import Card from '../../components/Card';
@@ -19,6 +24,17 @@ import Button from '../../components/Button';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { createFontStyle } from '../../utils/styleUtils';
+
+// Find the GAME_TYPES array and add an icon property to each game type
+const GAME_TYPES = [
+  { type: 'nassau', name: 'Nassau', description: 'Front 9, Back 9, Total 18', icon: 'flag' },
+  { type: 'skins', name: 'Skins', description: 'Each hole is worth a set amount', icon: 'dollar-sign' },
+  { type: 'match-play', name: 'Match Play', description: 'Win, lose, or halve each hole', icon: 'trophy' },
+  { type: 'stableford', name: 'Stableford', description: 'Points based on score relative to par', icon: 'chart-bar' },
+  { type: 'vegas', name: 'Vegas', description: 'Team game with special scoring', icon: 'dice' },
+  { type: 'wolf', name: 'Wolf', description: 'Players take turns being the "Wolf"', icon: 'paw' },
+];
 
 export default function NewRoundScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -49,12 +65,12 @@ export default function NewRoundScreen() {
     }
   };
 
-  const handleCourseSelect = (course) => {
+  const handleCourseSelect = (course: Course) => {
     dispatch(selectCourse(course));
     setStep(2);
   };
 
-  const handlePlayerSelect = (player, tee) => {
+  const handlePlayerSelect = (player: Player, tee: Tee | null) => {
     dispatch(selectPlayer({ player, tee }));
   };
 
@@ -64,7 +80,7 @@ export default function NewRoundScreen() {
     dispatch(addGuestPlayer({ name: guestName }));
   };
 
-  const handleGameSelect = (gameType) => {
+  const handleGameSelect = (gameType: string) => {
     const game = availableGames.find(g => g.type === gameType);
     if (game && selectedPlayers.length > 0) {
       dispatch(selectGame({
@@ -94,27 +110,27 @@ export default function NewRoundScreen() {
       userId: user?.id || '',
     }));
 
-    router.replace('/(tabs)/round');
+    router.replace('/rounds/currentRound');
   };
 
   const renderCourseSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select a Course</Text>
+    <View style={styles.stepContainer as any}>
+      <Text style={styles.stepTitle as any}>Select a Course</Text>
       
       {locationPermission && nearbyCourses.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Nearby Courses</Text>
+        <View style={styles.sectionContainer as any}>
+          <Text style={styles.sectionTitle as any}>Nearby Courses</Text>
           {nearbyCourses.map(course => (
             <Card
               key={course.id}
               onPress={() => handleCourseSelect(course)}
-              style={styles.courseCard}
+              style={styles.courseCard as any}
             >
-              <View style={styles.courseHeader}>
-                <Text style={styles.courseName}>{course.name}</Text>
+              <View style={styles.courseHeader as any}>
+                <Text style={styles.courseName as any}>{course.name}</Text>
                 <FontAwesome5 name="map-marker-alt" size={16} color={COLORS.primary} />
               </View>
-              <Text style={styles.courseDetails}>
+              <Text style={styles.courseDetails as any}>
                 {course.holes.length} holes • {course.tees.length} tee options
               </Text>
             </Card>
@@ -122,18 +138,18 @@ export default function NewRoundScreen() {
         </View>
       )}
       
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>All Courses</Text>
+      <View style={styles.sectionContainer as any}>
+        <Text style={styles.sectionTitle as any}>All Courses</Text>
         {courses.map(course => (
           <Card
             key={course.id}
             onPress={() => handleCourseSelect(course)}
-            style={styles.courseCard}
+            style={styles.courseCard as any}
           >
-            <View style={styles.courseHeader}>
-              <Text style={styles.courseName}>{course.name}</Text>
+            <View style={styles.courseHeader as any}>
+              <Text style={styles.courseName as any}>{course.name}</Text>
             </View>
-            <Text style={styles.courseDetails}>
+            <Text style={styles.courseDetails as any}>
               {course.holes.length} holes • {course.tees.length} tee options
             </Text>
           </Card>
@@ -143,12 +159,12 @@ export default function NewRoundScreen() {
   );
 
   const renderPlayerSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select Players</Text>
+    <View style={styles.stepContainer as any}>
+      <Text style={styles.stepTitle as any}>Select Players</Text>
       
-      <View style={styles.sectionContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Players</Text>
+      <View style={styles.sectionContainer as any}>
+        <View style={styles.sectionHeader as any}>
+          <Text style={styles.sectionTitle as any}>Your Players</Text>
           <Button
             title="Add Guest"
             variant="outline"
@@ -163,15 +179,15 @@ export default function NewRoundScreen() {
             <Card
               key={player.id}
               style={[
-                styles.playerCard,
-                isSelected && styles.selectedPlayerCard,
-              ]}
+                styles.playerCard as any,
+                isSelected && styles.selectedPlayerCard as any,
+              ] as any}
               onPress={() => handlePlayerSelect(player, null)}
             >
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>{player.name}</Text>
+              <View style={styles.playerInfo as any}>
+                <Text style={styles.playerName as any}>{player.name}</Text>
                 {player.handicapIndex !== undefined && (
-                  <Text style={styles.playerHandicap}>
+                  <Text style={styles.playerHandicap as any}>
                     Handicap: {player.handicapIndex}
                   </Text>
                 )}
@@ -185,27 +201,27 @@ export default function NewRoundScreen() {
       </View>
       
       {selectedPlayers.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Selected Players</Text>
+        <View style={styles.sectionContainer as any}>
+          <Text style={styles.sectionTitle as any}>Selected Players</Text>
           {selectedPlayers.map(player => (
-            <Card key={player.id} style={styles.selectedDetailCard}>
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>{player.name}</Text>
+            <Card key={player.id} style={styles.selectedDetailCard as any}>
+              <View style={styles.playerInfo as any}>
+                <Text style={styles.playerName as any}>{player.name}</Text>
               </View>
-              <View style={styles.teeSelection}>
-                <Text style={styles.teeLabel}>Tee:</Text>
+              <View style={styles.teeSelection as any}>
+                <Text style={styles.teeLabel as any}>Tee:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {selectedCourse?.tees.map(tee => (
                     <TouchableOpacity
                       key={tee.id}
                       style={[
-                        styles.teeOption,
-                        player.selectedTee?.id === tee.id && styles.selectedTeeOption,
+                        styles.teeOption as any,
+                        player.selectedTee?.id === tee.id && styles.selectedTeeOption as any,
                         { backgroundColor: tee.color },
                       ]}
                       onPress={() => handlePlayerSelect(player, tee)}
                     >
-                      <Text style={styles.teeName}>{tee.name}</Text>
+                      <Text style={styles.teeName as any}>{tee.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -215,17 +231,17 @@ export default function NewRoundScreen() {
         </View>
       )}
       
-      <View style={styles.navigationButtons}>
+      <View style={styles.navigationButtons as any}>
         <Button
           title="Back"
           variant="outline"
           onPress={() => setStep(1)}
-          style={styles.navigationButton}
+          style={styles.navigationButton as any}
         />
         <Button
           title="Next"
           onPress={() => setStep(3)}
-          style={styles.navigationButton}
+          style={styles.navigationButton as any}
           disabled={selectedPlayers.length === 0}
         />
       </View>
@@ -233,156 +249,125 @@ export default function NewRoundScreen() {
   );
 
   const renderGameSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Round Settings</Text>
+    <View style={styles.stepContainer as any}>
+      <Text style={styles.stepTitle as any}>Select Games</Text>
       
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Hole Selection</Text>
-        <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              holeSelection === 'front9' && styles.selectedOptionCard,
-            ]}
-            onPress={() => setHoleSelection('front9')}
-          >
-            <Text style={styles.optionTitle}>Front 9</Text>
-            <Text style={styles.optionDescription}>Holes 1-9</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              holeSelection === 'back9' && styles.selectedOptionCard,
-            ]}
-            onPress={() => setHoleSelection('back9')}
-          >
-            <Text style={styles.optionTitle}>Back 9</Text>
-            <Text style={styles.optionDescription}>Holes 10-18</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              holeSelection === 'full18' && styles.selectedOptionCard,
-            ]}
-            onPress={() => setHoleSelection('full18')}
-          >
-            <Text style={styles.optionTitle}>Full 18</Text>
-            <Text style={styles.optionDescription}>All holes</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              holeSelection === 'custom' && styles.selectedOptionCard,
-            ]}
-            onPress={() => setHoleSelection('custom')}
-          >
-            <Text style={styles.optionTitle}>Custom</Text>
-            <Text style={styles.optionDescription}>Select start hole</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {holeSelection === 'custom' && (
-          <View style={styles.customHoleContainer}>
-            <Text style={styles.customHoleLabel}>Starting Hole:</Text>
-            <View style={styles.customHoleOptions}>
-              {Array.from({ length: 18 }, (_, i) => i + 1).map(hole => (
-                <TouchableOpacity
-                  key={hole}
-                  style={[
-                    styles.customHoleOption,
-                    customStartHole === hole && styles.selectedCustomHoleOption,
-                  ]}
-                  onPress={() => setCustomStartHole(hole)}
-                >
-                  <Text
-                    style={[
-                      styles.customHoleText,
-                      customStartHole === hole && styles.selectedCustomHoleText,
-                    ]}
-                  >
-                    {hole}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Game Types (Optional)</Text>
-        <View style={styles.gamesGrid}>
-          {availableGames.map(game => {
+      <View style={styles.sectionContainer as any}>
+        <Text style={styles.sectionTitle as any}>Available Games</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gamesScrollView as any}>
+          {GAME_TYPES.map(game => {
             const isSelected = selectedGames.some(g => g.type === game.type);
             return (
               <TouchableOpacity
                 key={game.type}
                 style={[
-                  styles.gameCard,
-                  isSelected && styles.selectedGameCard,
+                  styles.gameCard as any,
+                  isSelected && styles.selectedGameCard as any,
                 ]}
                 onPress={() => handleGameSelect(game.type)}
               >
-                <Text style={styles.gameTitle}>{game.name}</Text>
-                <Text style={styles.gameDescription}>{game.description}</Text>
-                {isSelected && (
-                  <View style={styles.selectedGameIndicator}>
-                    <FontAwesome5 name="check" size={12} color={COLORS.secondary} />
-                  </View>
-                )}
+                <View style={styles.gameIconContainer as any}>
+                  <FontAwesome5 name={game.icon} size={24} color={isSelected ? COLORS.secondary : COLORS.primary} />
+                </View>
+                <Text style={[
+                  styles.gameTitle as any,
+                  isSelected && styles.selectedGameTitle as any,
+                ]}>
+                  {game.name}
+                </Text>
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
       
-      <View style={styles.navigationButtons}>
+      {selectedGames.length > 0 && (
+        <View style={styles.sectionContainer as any}>
+          <Text style={styles.sectionTitle as any}>Selected Games</Text>
+          {selectedGames.map(game => (
+            <Card key={game.id} style={styles.selectedGameDetailCard as any}>
+              <View style={styles.gameDetailHeader as any}>
+                <Text style={styles.gameDetailTitle as any}>{
+                  game.type === 'nassau' ? 'Nassau' :
+                  game.type === 'skins' ? 'Skins' :
+                  game.type === 'match-play' ? 'Match Play' :
+                  game.type === 'stableford' ? 'Stableford' :
+                  game.type === 'vegas' ? 'Vegas' :
+                  'Wolf'
+                }</Text>
+                <TouchableOpacity
+                  style={styles.removeButton as any}
+                  onPress={() => {
+                    const updatedGames = selectedGames.filter(g => g.id !== game.id);
+                    dispatch(selectGame({ type: game.type, players: selectedPlayers, stake: 1 }));
+                  }}
+                >
+                  <FontAwesome5 name="times" size={16} color={COLORS.error} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.gameSettings as any}>
+                <Text style={styles.gameSettingLabel as any}>Stake:</Text>
+                <TextInput
+                  style={styles.gameSettingInput as any}
+                  value={game.stake.toString()}
+                  onChangeText={(value) => {
+                    const stake = parseFloat(value) || 0;
+                    dispatch(selectGame({ type: game.type, players: selectedPlayers, stake }));
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0.00"
+                />
+              </View>
+            </Card>
+          ))}
+        </View>
+      )}
+      
+      <View style={styles.navigationButtons as any}>
         <Button
           title="Back"
           variant="outline"
           onPress={() => setStep(2)}
-          style={styles.navigationButton}
+          style={styles.navigationButton as any}
         />
         <Button
           title="Start Round"
           onPress={handleStartRound}
-          style={styles.navigationButton}
+          style={styles.navigationButton as any}
         />
       </View>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.stepIndicator}>
+    <ScrollView style={styles.container as any}>
+      <View style={styles.stepIndicator as any}>
         <View
           style={[
-            styles.stepDot,
-            step >= 1 && styles.activeStepDot,
+            styles.stepDot as any,
+            step >= 1 && styles.activeStepDot as any,
           ]}
         >
-          <Text style={styles.stepNumber}>1</Text>
+          <Text style={styles.stepNumber as any}>1</Text>
         </View>
-        <View style={styles.stepLine} />
+        <View style={styles.stepLine as any} />
         <View
           style={[
-            styles.stepDot,
-            step >= 2 && styles.activeStepDot,
+            styles.stepDot as any,
+            step >= 2 && styles.activeStepDot as any,
           ]}
         >
-          <Text style={styles.stepNumber}>2</Text>
+          <Text style={styles.stepNumber as any}>2</Text>
         </View>
-        <View style={styles.stepLine} />
+        <View style={styles.stepLine as any} />
         <View
           style={[
-            styles.stepDot,
-            step >= 3 && styles.activeStepDot,
+            styles.stepDot as any,
+            step >= 3 && styles.activeStepDot as any,
           ]}
         >
-          <Text style={styles.stepNumber}>3</Text>
+          <Text style={styles.stepNumber as any}>3</Text>
         </View>
       </View>
 
@@ -403,6 +388,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding * 2,
     backgroundColor: COLORS.secondary,
     ...SHADOWS.light,
   },
@@ -420,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   stepNumber: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     fontWeight: 'bold',
     color: COLORS.textPrimary,
   },
@@ -434,7 +420,7 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
   },
   stepTitle: {
-    ...FONTS.h2,
+    ...createFontStyle(FONTS.h2),
     color: COLORS.textPrimary,
     marginBottom: SIZES.padding,
   },
@@ -448,7 +434,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   sectionTitle: {
-    ...FONTS.h3,
+    ...createFontStyle(FONTS.h3),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base,
   },
@@ -462,11 +448,11 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base / 2,
   },
   courseName: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
   },
   courseDetails: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   playerCard: {
@@ -483,11 +469,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerName: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
   },
   playerHandicap: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   selectedDetailCard: {
@@ -499,7 +485,7 @@ const styles = StyleSheet.create({
     marginTop: SIZES.base,
   },
   teeLabel: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
     marginRight: SIZES.base,
   },
@@ -516,7 +502,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   teeName: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.secondary,
     fontWeight: 'bold',
   },
@@ -547,19 +533,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   optionTitle: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
   optionDescription: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
   },
   customHoleContainer: {
     marginTop: SIZES.base,
   },
   customHoleLabel: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base,
   },
@@ -581,7 +567,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   customHoleText: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
   },
   selectedCustomHoleText: {
@@ -606,12 +592,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   gameTitle: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
   gameDescription: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
   },
   selectedGameIndicator: {
@@ -625,4 +611,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-}); 
+  gameIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+  },
+  selectedGameTitle: {
+    color: COLORS.secondary,
+  },
+  selectedGameDetailCard: {
+    marginBottom: SIZES.base,
+  },
+  gameDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+  },
+  gameDetailTitle: {
+    ...createFontStyle(FONTS.h4),
+    color: COLORS.textPrimary,
+  },
+  removeButton: {
+    padding: SIZES.base,
+  },
+  gameSettings: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SIZES.base,
+  },
+  gameSettingLabel: {
+    ...createFontStyle(FONTS.body4),
+    color: COLORS.textPrimary,
+  },
+  gameSettingInput: {
+    width: 80,
+    padding: SIZES.base,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+  },
+  gamesScrollView: {
+    marginBottom: SIZES.padding,
+  },
+}) as Record<string, StyleProp<ViewStyle> | StyleProp<TextStyle> | StyleProp<ImageStyle>>; 

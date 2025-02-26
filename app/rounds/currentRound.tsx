@@ -6,20 +6,24 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 import { RootState, AppDispatch } from '../../store';
-import { addScore, updateRound, completeRound } from '../../store/slices/roundSlice';
+import { addScore, updateRound, completeRound, HoleScore } from '../../store/slices/roundSlice';
 import { updateGameResults } from '../../store/slices/gameSlice';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Scorecard from '../../components/Scorecard';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { createFontStyle } from '../../utils/styleUtils';
 
 export default function RoundScreen() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentRound, isLoading } = useSelector((state: RootState) => state.round);
@@ -58,9 +62,9 @@ export default function RoundScreen() {
     
     setHoleRange(holes);
     setCurrentHole(holes[0]);
-  }, [currentRound]);
+  }, [currentRound, router]);
 
-  const handleScoreChange = (score) => {
+  const handleScoreChange = (score: HoleScore) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     dispatch(addScore(score));
   };
@@ -127,17 +131,17 @@ export default function RoundScreen() {
     dispatch(completeRound(currentRound.id));
     
     // Navigate to round summary
-    router.replace(`/rounds/${currentRound.id}`);
+    router.replace(`/rounds/${currentRound.id}` as any);
   };
 
   if (!currentRound) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.noRoundText}>No active round found</Text>
+      <View style={styles.container as any}>
+        <Text style={styles.noRoundText as any}>No active round found</Text>
         <Button
           title="Start New Round"
-          onPress={() => router.replace('/(tabs)/new-round')}
-          style={styles.startButton}
+          onPress={() => router.replace('/(tabs)/new-round' as any)}
+          style={styles.startButton as any}
         />
       </View>
     );
@@ -148,10 +152,10 @@ export default function RoundScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.courseName}>{currentRound.course?.name}</Text>
-        <Text style={styles.roundDetails}>
+    <ScrollView style={styles.container as any}>
+      <View style={styles.header as any}>
+        <Text style={styles.courseName as any}>{currentRound.course?.name}</Text>
+        <Text style={styles.roundDetails as any}>
           {currentRound.players.length} Players • {
             currentRound.holeSelection === 'front9' ? 'Front 9' :
             currentRound.holeSelection === 'back9' ? 'Back 9' :
@@ -160,38 +164,38 @@ export default function RoundScreen() {
         </Text>
       </View>
 
-      <Card variant="elevated" style={styles.holeCard}>
-        <View style={styles.holeHeader}>
-          <Text style={styles.holeTitle}>Hole {currentHole}</Text>
-          <View style={styles.holeInfo}>
-            <Text style={styles.holePar}>Par {currentHoleData?.par || '-'}</Text>
-            <Text style={styles.holeYardage}>
+      <Card variant="elevated" style={styles.holeCard as any}>
+        <View style={styles.holeHeader as any}>
+          <Text style={styles.holeTitle as any}>Hole {currentHole}</Text>
+          <View style={styles.holeInfo as any}>
+            <Text style={styles.holePar as any}>Par {currentHoleData?.par || '-'}</Text>
+            <Text style={styles.holeYardage as any}>
               {currentRound.players[0]?.selectedTee && currentHoleData?.yardage[currentRound.players[0].selectedTee.id] || '-'} yards
             </Text>
-            <Text style={styles.holeHandicap}>HCP {currentHoleData?.handicap || '-'}</Text>
+            <Text style={styles.holeHandicap as any}>HCP {currentHoleData?.handicap || '-'}</Text>
           </View>
         </View>
         
-        <View style={styles.holeNavigation}>
+        <View style={styles.holeNavigation as any}>
           <TouchableOpacity
             style={[
-              styles.navButton,
-              holeRange.indexOf(currentHole) === 0 && styles.disabledNavButton,
+              styles.navButton as any,
+              holeRange.indexOf(currentHole) === 0 && (styles.disabledNavButton as any),
             ]}
             onPress={handlePreviousHole}
             disabled={holeRange.indexOf(currentHole) === 0}
           >
             <FontAwesome5 name="chevron-left" size={16} color={COLORS.textPrimary} />
-            <Text style={styles.navButtonText}>Previous</Text>
+            <Text style={styles.navButtonText as any}>Previous</Text>
           </TouchableOpacity>
           
-          <View style={styles.holeIndicator}>
+          <View style={styles.holeIndicator as any}>
             {holeRange.map(hole => (
               <TouchableOpacity
                 key={hole}
                 style={[
-                  styles.holeDot,
-                  hole === currentHole && styles.currentHoleDot,
+                  styles.holeDot as any,
+                  hole === currentHole && (styles.currentHoleDot as any),
                 ]}
                 onPress={() => setCurrentHole(hole)}
               />
@@ -200,17 +204,17 @@ export default function RoundScreen() {
           
           <TouchableOpacity
             style={[
-              styles.navButton,
-              holeRange.indexOf(currentHole) === holeRange.length - 1 && styles.endRoundButton,
+              styles.navButton as any,
+              holeRange.indexOf(currentHole) === holeRange.length - 1 && (styles.endRoundButton as any),
             ]}
             onPress={holeRange.indexOf(currentHole) === holeRange.length - 1 ? 
               () => setShowEndRoundConfirm(true) : handleNextHole}
           >
             {holeRange.indexOf(currentHole) === holeRange.length - 1 ? (
-              <Text style={styles.endRoundText}>End Round</Text>
+              <Text style={styles.endRoundText as any}>End Round</Text>
             ) : (
               <>
-                <Text style={styles.navButtonText}>Next</Text>
+                <Text style={styles.navButtonText as any}>Next</Text>
                 <FontAwesome5 name="chevron-right" size={16} color={COLORS.textPrimary} />
               </>
             )}
@@ -218,8 +222,8 @@ export default function RoundScreen() {
         </View>
       </Card>
 
-      <View style={styles.scorecardContainer}>
-        <Text style={styles.sectionTitle}>Scorecard</Text>
+      <View style={styles.scorecardContainer as any}>
+        <Text style={styles.sectionTitle as any}>Scorecard</Text>
         <Scorecard
           course={currentRound.course!}
           players={currentRound.players}
@@ -230,11 +234,11 @@ export default function RoundScreen() {
       </View>
 
       {selectedGames.length > 0 && (
-        <View style={styles.gamesContainer}>
-          <Text style={styles.sectionTitle}>Active Games</Text>
+        <View style={styles.gamesContainer as any}>
+          <Text style={styles.sectionTitle as any}>Active Games</Text>
           {selectedGames.map(game => (
-            <Card key={game.id} style={styles.gameCard}>
-              <Text style={styles.gameTitle}>{
+            <Card key={game.id} style={styles.gameCard as any}>
+              <Text style={styles.gameTitle as any}>{
                 game.type === 'nassau' ? 'Nassau' :
                 game.type === 'skins' ? 'Skins' :
                 game.type === 'match-play' ? 'Match Play' :
@@ -242,45 +246,45 @@ export default function RoundScreen() {
                 game.type === 'vegas' ? 'Vegas' :
                 'Wolf'
               }</Text>
-              <Text style={styles.gameStake}>Stake: ${game.stake}</Text>
+              <Text style={styles.gameStake as any}>Stake: ${game.stake}</Text>
             </Card>
           ))}
         </View>
       )}
 
-      <View style={styles.actionsContainer}>
+      <View style={styles.actionsContainer as any}>
         <Button
           title="View Full Scorecard"
           variant="outline"
-          onPress={() => router.push('/scorecard')}
-          style={styles.actionButton}
+          onPress={() => router.push('/scorecard' as any)}
+          style={styles.actionButton as any}
         />
         <Button
           title="End Round"
           variant="primary"
           onPress={() => setShowEndRoundConfirm(true)}
-          style={styles.actionButton}
+          style={styles.actionButton as any}
         />
       </View>
 
       {showEndRoundConfirm && (
-        <View style={styles.confirmOverlay}>
-          <Card variant="elevated" style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>End Round?</Text>
-            <Text style={styles.confirmText}>
+        <View style={styles.confirmOverlay as any}>
+          <Card variant="elevated" style={styles.confirmCard as any}>
+            <Text style={styles.confirmTitle as any}>End Round?</Text>
+            <Text style={styles.confirmText as any}>
               Are you sure you want to end this round? Make sure all scores are entered.
             </Text>
-            <View style={styles.confirmButtons}>
+            <View style={styles.confirmButtons as any}>
               <Button
                 title="Cancel"
                 variant="outline"
                 onPress={() => setShowEndRoundConfirm(false)}
-                style={styles.confirmButton}
+                style={styles.confirmButton as any}
               />
               <Button
                 title="End Round"
                 onPress={handleEndRound}
-                style={styles.confirmButton}
+                style={styles.confirmButton as any}
               />
             </View>
           </Card>
@@ -406,8 +410,9 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   gameTitle: {
-    ...FONTS.h4,
     color: COLORS.textPrimary,
+    fontWeight: 'bold',
+    fontSize: FONTS.h4.fontSize,
   },
   gameStake: {
     ...FONTS.body4,

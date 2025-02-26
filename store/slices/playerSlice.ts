@@ -65,6 +65,44 @@ export const createPlayer = createAsyncThunk(
   }
 );
 
+export const deletePlayer = createAsyncThunk(
+  'player/deletePlayer',
+  async (playerId: string, { rejectWithValue }) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+      
+      if (error) throw error;
+      return playerId;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const updatePlayer = createAsyncThunk(
+  'player/updatePlayer',
+  async (playerData: { id: string; name: string; handicapIndex?: number }, { rejectWithValue }) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          name: playerData.name,
+          handicap_index: playerData.handicapIndex,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', playerData.id);
+      
+      if (error) throw error;
+      return playerData;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const playerSlice = createSlice({
   name: 'player',
   initialState,
@@ -132,6 +170,39 @@ const playerSlice = createSlice({
         state.players.push(action.payload);
       })
       .addCase(createPlayer.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Delete Player
+      .addCase(deletePlayer.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deletePlayer.fulfilled, (state, action: PayloadAction<string>) => {
+        state.isLoading = false;
+        state.players = state.players.filter(player => player.id !== action.payload);
+        // Also remove from selected players if present
+        state.selectedPlayers = state.selectedPlayers.filter(player => player.id !== action.payload);
+      })
+      .addCase(deletePlayer.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Update Player
+      .addCase(updatePlayer.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updatePlayer.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const { id, name, handicapIndex } = action.payload;
+        state.players = state.players.map(player => 
+          player.id === id 
+            ? { ...player, name, handicapIndex } 
+            : player
+        );
+      })
+      .addCase(updatePlayer.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

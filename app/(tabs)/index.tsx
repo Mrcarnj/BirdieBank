@@ -6,8 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { COLORS, FONTS, SIZES, SHADOWS } from '../../constants/theme';
 import { RootState, AppDispatch } from '../../store';
 import { fetchPastRounds } from '../../store/slices/roundSlice';
@@ -17,6 +21,7 @@ import Card from '../../components/Card';
 import Button from '../../components/Button';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { createFontStyle } from '../../utils/styleUtils';
 
 export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -34,46 +39,26 @@ export default function HomeScreen() {
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <Text style={styles.sectionTitle}>Start a Round</Text>
       <View style={styles.quickActionsGrid}>
         <TouchableOpacity
-          style={styles.quickActionItem}
+          style={[styles.quickActionItem, { backgroundColor: COLORS.primary }]}
           onPress={() => router.push('/(tabs)/new-round')}
         >
-          <View style={styles.quickActionIconContainer}>
-            <FontAwesome5 name="golf-ball" size={24} color={COLORS.primary} />
+          <View style={[styles.quickActionIconContainer, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+            <FontAwesome5 name="golf-ball" size={24} color={COLORS.secondary} />
           </View>
-          <Text style={styles.quickActionText}>Start Round</Text>
+          <Text style={[styles.quickActionText, { color: COLORS.secondary }]}>Start New Round</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.quickActionItem}
-          onPress={() => router.push('/(tabs)/courses')}
+          onPress={() => router.push('/courses/index')}
         >
           <View style={styles.quickActionIconContainer}>
             <FontAwesome5 name="flag" size={24} color={COLORS.primary} />
           </View>
           <Text style={styles.quickActionText}>Find Course</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.quickActionItem}
-          onPress={() => router.push('/(tabs)/history')}
-        >
-          <View style={styles.quickActionIconContainer}>
-            <FontAwesome5 name="history" size={24} color={COLORS.primary} />
-          </View>
-          <Text style={styles.quickActionText}>View History</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.quickActionItem}
-          onPress={() => router.push('/(tabs)/profile')}
-        >
-          <View style={styles.quickActionIconContainer}>
-            <FontAwesome5 name="user" size={24} color={COLORS.primary} />
-          </View>
-          <Text style={styles.quickActionText}>Profile</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -104,7 +89,7 @@ export default function HomeScreen() {
         
         <Button
           title="Continue Round"
-          onPress={() => router.push('/(tabs)/round')}
+          onPress={() => router.push('/rounds/currentRound')}
           style={styles.continueButton}
         />
       </Card>
@@ -120,7 +105,7 @@ export default function HomeScreen() {
         {pastRounds.slice(0, 3).map((round) => (
           <Card
             key={round.id}
-            onPress={() => router.push(`/rounds/${round.id}`)}
+            onPress={() => router.push(`/rounds/${round.id}` as any)}
             style={styles.recentRoundCard}
           >
             <View style={styles.recentRoundHeader}>
@@ -132,14 +117,20 @@ export default function HomeScreen() {
               </Text>
             </View>
             <View style={styles.recentRoundDetails}>
-              <Text style={styles.recentRoundPlayers}>
-                {round.players.length} Players
-              </Text>
-              <Text style={styles.recentRoundType}>
-                {round.holeSelection === 'front9' ? 'Front 9' :
-                 round.holeSelection === 'back9' ? 'Back 9' :
-                 round.holeSelection === 'full18' ? 'Full 18' : 'Custom'}
-              </Text>
+              <View style={styles.recentRoundInfo}>
+                <FontAwesome5 name="users" size={14} color={COLORS.textSecondary} style={styles.recentRoundIcon} />
+                <Text style={styles.recentRoundPlayers}>
+                  {round.players.length} Players
+                </Text>
+              </View>
+              <View style={styles.recentRoundInfo}>
+                <FontAwesome5 name="flag" size={14} color={COLORS.textSecondary} style={styles.recentRoundIcon} />
+                <Text style={styles.recentRoundType}>
+                  {round.holeSelection === 'front9' ? 'Front 9' :
+                   round.holeSelection === 'back9' ? 'Back 9' :
+                   round.holeSelection === 'full18' ? 'Full 18' : 'Custom'}
+                </Text>
+              </View>
             </View>
           </Card>
         ))}
@@ -148,7 +139,7 @@ export default function HomeScreen() {
           <Button
             title="View All Rounds"
             variant="outline"
-            onPress={() => router.push('/(tabs)/history')}
+            onPress={() => router.push('/history')}
             style={styles.viewAllButton}
           />
         )}
@@ -171,16 +162,19 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={course.id}
               style={styles.courseCard}
-              onPress={() => router.push(`/courses/${course.id}`)}
+              onPress={() => router.push(`/courses/${course.id}` as any)}
             >
-              <Image
-                source={
-                  course.imageUrl
-                    ? { uri: course.imageUrl }
-                    : require('../../assets/default-course.jpg')
-                }
-                style={styles.courseImage}
-              />
+              {course.imageUrl ? (
+                <Image
+                  source={{ uri: course.imageUrl }}
+                  style={styles.courseImage}
+                  onError={() => {/* Handle image load error silently */}}
+                />
+              ) : (
+                <View style={[styles.courseImage, styles.courseImageFallback]}>
+                  <Ionicons name="golf" size={40} color={COLORS.primary} />
+                </View>
+              )}
               <View style={styles.courseInfo}>
                 <Text style={styles.courseName} numberOfLines={1}>
                   {course.name}
@@ -192,21 +186,66 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        
+        <Button
+          title="View All Courses"
+          variant="outline"
+          onPress={() => router.push('/courses')}
+          style={styles.viewAllButton}
+        />
       </View>
     );
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
-        <Text style={styles.greeting}>
-          Hello, {user?.email?.split('@')[0] || 'Golfer'}
-        </Text>
+        <Text style={styles.greeting}>Hello, {user?.name || 'Golfer'}!</Text>
         <Text style={styles.subGreeting}>Ready for your next round?</Text>
       </View>
 
-      {renderCurrentRound()}
+      {/* Quick Access Links */}
+      <View style={styles.quickAccessContainer}>
+        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <View style={styles.quickAccessGrid}>
+          <TouchableOpacity 
+            style={styles.quickAccessItem}
+            onPress={() => router.push('/courses')}
+          >
+            <View style={styles.quickAccessIconContainer}>
+              <FontAwesome5 name="flag" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.quickAccessText}>Courses</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickAccessItem}
+            onPress={() => router.push('/players')}
+          >
+            <View style={styles.quickAccessIconContainer}>
+              <FontAwesome5 name="users" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.quickAccessText}>Players</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.quickAccessItem}
+            onPress={() => router.push('/history')}
+          >
+            <View style={styles.quickAccessIconContainer}>
+              <FontAwesome5 name="history" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.quickAccessText}>History</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {renderQuickActions()}
+      {currentRound && renderCurrentRound()}
       {renderRecentRounds()}
       {renderNearbyCourses()}
     </ScrollView>
@@ -219,26 +258,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   contentContainer: {
-    padding: SIZES.padding,
+    paddingHorizontal: SIZES.padding,
+    paddingTop: SIZES.padding,
+    paddingBottom: SIZES.padding * 2,
   },
   header: {
-    marginBottom: SIZES.padding,
+    marginBottom: SIZES.padding * 1.5,
   },
   greeting: {
-    ...FONTS.h2,
+    ...createFontStyle(FONTS.h2),
     color: COLORS.textPrimary,
+    marginBottom: SIZES.base / 2,
   },
   subGreeting: {
-    ...FONTS.body3,
+    ...createFontStyle(FONTS.body3),
     color: COLORS.textSecondary,
   },
   sectionTitle: {
-    ...FONTS.h3,
+    ...createFontStyle(FONTS.h3),
     color: COLORS.textPrimary,
-    marginBottom: SIZES.base,
+    marginBottom: SIZES.base * 1.5,
   },
   quickActionsContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding * 1.5,
   },
   quickActionsGrid: {
     flexDirection: 'row',
@@ -252,93 +294,110 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
     marginBottom: SIZES.base * 2,
     alignItems: 'center',
-    ...SHADOWS.light,
+    ...SHADOWS.medium,
   },
   quickActionIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: COLORS.secondaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SIZES.base,
+    marginBottom: SIZES.base * 1.5,
+    ...SHADOWS.light,
   },
   quickActionText: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   currentRoundCard: {
-    backgroundColor: COLORS.secondaryLight,
-    marginVertical: SIZES.base,
+    backgroundColor: COLORS.secondary,
+    marginBottom: SIZES.padding * 1.5,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    ...SHADOWS.medium,
   },
   currentRoundHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SIZES.base,
+    marginBottom: SIZES.base * 1.5,
   },
   currentRoundTitle: {
-    ...FONTS.h3,
+    ...createFontStyle(FONTS.h3),
     color: COLORS.primary,
   },
   currentRoundInfo: {
     marginBottom: SIZES.base * 2,
   },
   currentRoundCourseName: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
+    marginBottom: SIZES.base / 2,
   },
   currentRoundDetails: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   continueButton: {
     marginTop: SIZES.base,
   },
   recentRoundsContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding * 1.5,
   },
   recentRoundCard: {
-    marginBottom: SIZES.base,
+    marginBottom: SIZES.base * 1.5,
+    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius,
+    padding: SIZES.padding,
+    ...SHADOWS.medium,
   },
   recentRoundHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SIZES.base,
+    marginBottom: SIZES.base * 1.5,
   },
   recentRoundCourseName: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
   },
   recentRoundDate: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
   },
   recentRoundDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  recentRoundInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentRoundIcon: {
+    marginRight: SIZES.base,
+  },
   recentRoundPlayers: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   recentRoundType: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   viewAllButton: {
-    marginTop: SIZES.base,
+    marginTop: SIZES.padding,
   },
   nearbyCoursesContainer: {
-    marginVertical: SIZES.padding,
+    marginBottom: SIZES.padding * 1.5,
   },
   nearbyCoursesScroll: {
-    paddingRight: SIZES.padding,
+    paddingTop: SIZES.base,
+    paddingBottom: SIZES.base,
   },
   courseCard: {
-    width: 200,
+    width: 220,
     marginRight: SIZES.base * 2,
     borderRadius: SIZES.radius,
     backgroundColor: COLORS.secondary,
@@ -347,17 +406,50 @@ const styles = StyleSheet.create({
   },
   courseImage: {
     width: '100%',
-    height: 120,
+    height: 130,
+  },
+  courseImageFallback: {
+    backgroundColor: COLORS.secondaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   courseInfo: {
-    padding: SIZES.base,
+    padding: SIZES.padding,
   },
   courseName: {
-    ...FONTS.h4,
+    ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
+    marginBottom: SIZES.base / 2,
   },
   courseDetails: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
+  },
+  quickAccessContainer: {
+    marginBottom: SIZES.padding * 1.5,
+  },
+  quickAccessGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.base * 1.5,
+  },
+  quickAccessItem: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  quickAccessIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.base * 1.5,
+    ...SHADOWS.medium,
+  },
+  quickAccessText: {
+    ...createFontStyle(FONTS.body4),
+    color: COLORS.textPrimary,
+    fontWeight: '500',
   },
 }); 

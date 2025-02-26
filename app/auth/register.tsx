@@ -18,6 +18,7 @@ import Button from '../../components/Button';
 import { router } from 'expo-router';
 import { AppDispatch, RootState } from '../../store';
 import { StatusBar } from 'expo-status-bar';
+import { createFontStyle } from '../../utils/styleUtils';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -73,11 +74,26 @@ export default function RegisterScreen() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          {(() => {
+            try {
+              // Try to require the image, but don't crash if it's missing
+              const logoImage = require('../../assets/images/react-logo.png');
+              return (
+                <Image
+                  source={logoImage}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              );
+            } catch (error) {
+              // Fallback if image is missing
+              return (
+                <View style={[styles.logo, { backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Text style={{ color: COLORS.secondary, fontSize: 24, fontWeight: 'bold' }}>BB</Text>
+                </View>
+              );
+            }
+          })()}
           <Text style={styles.title}>BirdieBank</Text>
           <Text style={styles.subtitle}>Join the golf community</Text>
         </View>
@@ -163,12 +179,12 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   title: {
-    ...FONTS.h1,
+    ...createFontStyle(FONTS.h1),
     color: COLORS.primary,
     marginBottom: SIZES.base / 2,
   },
   subtitle: {
-    ...FONTS.body3,
+    ...createFontStyle(FONTS.body3),
     color: COLORS.textSecondary,
   },
   formContainer: {
@@ -178,7 +194,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   formTitle: {
-    ...FONTS.h2,
+    ...createFontStyle(FONTS.h2),
     color: COLORS.textPrimary,
     marginBottom: SIZES.padding,
     textAlign: 'center',
@@ -187,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.padding,
   },
   label: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textPrimary,
     marginBottom: SIZES.base / 2,
   },
@@ -197,7 +213,7 @@ const styles = StyleSheet.create({
     padding: SIZES.base * 1.5,
     borderWidth: 1,
     borderColor: COLORS.border,
-    ...FONTS.body3,
+    ...createFontStyle(FONTS.body3),
   },
   button: {
     marginTop: SIZES.base,
@@ -208,11 +224,11 @@ const styles = StyleSheet.create({
     marginTop: SIZES.padding * 2,
   },
   loginText: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.textSecondary,
   },
   loginLink: {
-    ...FONTS.body4,
+    ...createFontStyle(FONTS.body4),
     color: COLORS.primary,
     fontWeight: 'bold',
     marginLeft: SIZES.base / 2,
@@ -222,7 +238,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   termsText: {
-    ...FONTS.body5,
+    ...createFontStyle(FONTS.body5),
     color: COLORS.textSecondary,
     textAlign: 'center',
   },

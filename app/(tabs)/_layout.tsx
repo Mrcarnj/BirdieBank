@@ -46,34 +46,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="courses"
-        options={{
-          title: 'Courses',
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome5 name="flag" size={size} color={color} />
-          ),
-        }}
-      />
-      {currentRound ? (
-        <Tabs.Screen
-          name="round"
-          options={{
-            title: 'Current Round',
-            tabBarIcon: ({ color, size }) => (
-              <FontAwesome5 name="golf-ball" size={size} color={color} />
-            ),
-            tabBarStyle: {
-              backgroundColor: COLORS.primary,
-              borderTopColor: COLORS.primaryDark,
-              height: 60,
-              paddingBottom: 10,
-            },
-            tabBarActiveTintColor: COLORS.secondary,
-            tabBarInactiveTintColor: COLORS.secondaryLight,
-          }}
-        />
-      ) : (
         <Tabs.Screen
           name="new-round"
           options={{
@@ -83,16 +55,6 @@ export default function TabLayout() {
             ),
           }}
         />
-      )}
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome5 name="history" size={size} color={color} />
-          ),
-        }}
-      />
       <Tabs.Screen
         name="profile"
         options={{
