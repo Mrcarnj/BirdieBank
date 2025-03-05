@@ -17,6 +17,20 @@ export interface Hole {
   handicap: number;
 }
 
+export interface TeeSet {
+  id: string;
+  course_id: string;
+  name: string;
+  color: string;
+  gender?: string;
+  par?: number;
+  course_rating?: number;
+  slope_rating?: number;
+  total_yardage?: number;
+  front_nine_yardage?: number;
+  back_nine_yardage?: number;
+}
+
 export interface Course {
   id: string;
   name: string;
@@ -28,6 +42,25 @@ export interface Course {
   tees: Tee[];
   holes: Hole[];
   imageUrl?: string;
+  clubs?: {
+    city: string;
+    state: string;
+  };
+  club_id?: string | {
+    city?: string;
+    state?: string;
+    [key: string]: any;
+  };
+  clubData?: {
+    city?: string;
+    state?: string;
+    address?: string;
+    phone?: string;
+    website_url?: string;
+    [key: string]: any;
+  } | null;
+  tee_sets?: TeeSet[];
+  hole_count?: number;
 }
 
 interface CourseState {
@@ -50,13 +83,48 @@ export const fetchCourses = createAsyncThunk(
   'course/fetchCourses',
   async (_, { rejectWithValue }) => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching courses...');
+      
+      // First get all courses
+      const { data: coursesData, error: coursesError } = await supabase
         .from('courses')
         .select('*');
       
-      if (error) throw error;
-      return data as Course[];
+      if (coursesError) throw coursesError;
+      
+      // If we have courses, fetch the club data for each course
+      if (coursesData && coursesData.length > 0) {
+        console.log(`Found ${coursesData.length} courses, fetching club data...`);
+        
+        // Create an array of promises to fetch club data for each course
+        const coursesWithClubData = await Promise.all(
+          coursesData.map(async (course) => {
+            if (!course.club_id) {
+              return { ...course, clubData: null };
+            }
+            
+            const { data: clubData, error: clubError } = await supabase
+              .from('clubs')
+              .select('city, state')
+              .eq('id', course.club_id)
+              .single();
+            
+            if (clubError) {
+              console.error(`Error fetching club data for course ${course.id}:`, clubError);
+              return { ...course, clubData: null };
+            }
+            
+            return { ...course, clubData };
+          })
+        );
+        
+        console.log('First course with club data:', JSON.stringify(coursesWithClubData[0], null, 2));
+        return coursesWithClubData;
+      }
+      
+      return coursesData;
     } catch (error: any) {
+      console.error('Error in fetchCourses:', error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -97,6 +165,75 @@ export const fetchNearbyCourses = createAsyncThunk(
 
       return nearbyCourses;
     } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const fetchCourseById = createAsyncThunk(
+  'course/fetchCourseById',
+  async (courseId: string, { rejectWithValue }) => {
+    try {
+      console.log(`Fetching course with ID: ${courseId}`);
+      
+      // Get the course data
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', courseId)
+        .single();
+      
+      if (courseError) throw courseError;
+      
+      if (!courseData) {
+        throw new Error(`Course with ID ${courseId} not found`);
+      }
+      
+      // Get the club data
+      let clubData = null;
+      if (courseData.club_id) {
+        const { data: club, error: clubError } = await supabase
+          .from('clubs')
+          .select('*')
+          .eq('id', courseData.club_id)
+          .single();
+        
+        if (!clubError && club) {
+          clubData = club;
+        }
+      }
+      
+      // Get the tee sets data
+      const { data: teeSets, error: teeSetsError } = await supabase
+        .from('tee_sets')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('total_yardage', { ascending: false });
+      
+      if (teeSetsError) {
+        console.error(`Error fetching tee sets for course ${courseId}:`, teeSetsError);
+      }
+      
+      // Get the holes data
+      const { data: holes, error: holesError } = await supabase
+        .from('holes')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('hole_number', { ascending: true });
+      
+      if (holesError) {
+        console.error(`Error fetching holes for course ${courseId}:`, holesError);
+      }
+      
+      // Combine all the data
+      return {
+        ...courseData,
+        clubData,
+        tee_sets: teeSets || [],
+        holes: holes || []
+      };
+    } catch (error: any) {
+      console.error(`Error fetching course with ID ${courseId}:`, error.message);
       return rejectWithValue(error.message);
     }
   }
@@ -156,6 +293,19 @@ const courseSlice = createSlice({
         state.nearbyCourses = action.payload;
       })
       .addCase(fetchNearbyCourses.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch Course By ID
+      .addCase(fetchCourseById.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchCourseById.fulfilled, (state, action: PayloadAction<Course>) => {
+        state.isLoading = false;
+        state.selectedCourse = action.payload;
+      })
+      .addCase(fetchCourseById.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

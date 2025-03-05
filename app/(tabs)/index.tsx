@@ -152,6 +152,11 @@ export default function HomeScreen() {
   const renderNearbyCourses = () => {
     if (courses.length === 0) return null;
 
+    // Debug: Log the first course to see its structure
+    if (courses.length > 0) {
+      console.log('First course data in renderNearbyCourses:', JSON.stringify(courses[0], null, 2));
+    }
+
     return (
       <View style={styles.nearbyCoursesContainer}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Nearby Courses</Text>
@@ -182,7 +187,27 @@ export default function HomeScreen() {
                   {course.name}
                 </Text>
                 <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
-                  {course.holes.length} holes
+                  {(() => {
+                    // Check for clubData property (from our new approach)
+                    if (course.clubData && (course.clubData.city || course.clubData.state)) {
+                      return `${course.clubData.city || ''}, ${course.clubData.state || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+                    }
+                    
+                    // Check for clubs property (from the old approach)
+                    if (course.clubs && (course.clubs.city || course.clubs.state)) {
+                      return `${course.clubs.city || ''}, ${course.clubs.state || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+                    }
+                    
+                    // Check for club_id property (it might be a direct reference)
+                    if (course.club_id && typeof course.club_id === 'object') {
+                      const clubData = course.club_id;
+                      if (clubData.city || clubData.state) {
+                        return `${clubData.city || ''}, ${clubData.state || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+                      }
+                    }
+                    
+                    return 'Location unavailable';
+                  })()}
                 </Text>
               </View>
             </TouchableOpacity>
