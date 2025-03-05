@@ -66,7 +66,22 @@ export default function CourseDetailsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: selectedCourse.name }} />
+      <Stack.Screen 
+        options={{
+          title: selectedCourse.clubData?.name || 'Course Details',
+          headerShown: true,
+          headerBackTitle: 'Home',
+          headerLeft: () => (
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+              onPress={() => router.push('/(tabs)')}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.textLight} />
+              <Text style={{ color: colors.textLight, marginLeft: 5 }}>Home</Text>
+            </TouchableOpacity>
+          ),
+        }} 
+      />
       
       {selectedCourse.imageUrl ? (
         <Image source={{ uri: selectedCourse.imageUrl }} style={styles.courseImage} />
@@ -77,7 +92,11 @@ export default function CourseDetailsScreen() {
       )}
       
       <View style={styles.contentContainer}>
-        <Text style={[styles.courseName, { color: colors.textPrimary }]}>{selectedCourse.name}</Text>
+        <View style={styles.courseNameContainer}>
+          <Text style={[styles.courseName, { color: colors.textPrimary, textAlign: 'center' }]}>
+            {selectedCourse.name}
+          </Text>
+        </View>
         
         {/* Course Information */}
         <View style={[styles.sectionContainer, { backgroundColor: colors.secondary }]}>
@@ -287,9 +306,14 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: SIZES.padding * 0.8,
   },
+  courseNameContainer: {
+    marginBottom: SIZES.base * 1.5,
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: SIZES.padding,
+  },
   courseName: {
     ...createFontStyle(FONTS.h3),
-    marginBottom: SIZES.base * 1.5,
   },
   sectionContainer: {
     marginBottom: SIZES.padding,

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter, Stack } from 'expo-router';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { COLORS, SIZES, SHADOWS, FONTS } from '../../constants/theme';
 import Card from '../../components/Card';
@@ -34,6 +34,89 @@ export default function CoursesScreen() {
     setRefreshing(false);
   };
 
+  // Function to find the most common par value from tee sets
+  const getMostCommonPar = (course: any) => {
+    // If no tee_sets, fall back to holes calculation
+    if (!course.tee_sets || course.tee_sets.length === 0) {
+      return course.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A';
+    }
+    
+    // Count occurrences of each par value
+    const parCounts: Record<number, number> = {};
+    course.tee_sets.forEach((teeSet: any) => {
+      if (teeSet.par) {
+        parCounts[teeSet.par] = (parCounts[teeSet.par] || 0) + 1;
+      }
+    });
+    
+    // If no par values found in tee_sets
+    if (Object.keys(parCounts).length === 0) {
+      return course.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A';
+    }
+    
+    // Find the most common par value
+    let mostCommonPar = 0;
+    let highestCount = 0;
+    
+    Object.entries(parCounts).forEach(([par, count]) => {
+      if (count > highestCount) {
+        highestCount = count;
+        mostCommonPar = parseInt(par);
+      }
+    });
+    
+    return mostCommonPar || 'N/A';
+  };
+
+  // Function to get the correct hole count
+  const getHoleCount = (course: any) => {
+    // First check if hole_count is explicitly set
+    if (course.hole_count) {
+      return course.hole_count;
+    }
+    
+    // Then check if we have holes data
+    if (course.holes && course.holes.length > 0) {
+      return course.holes.length;
+    }
+    
+    // If we have tee_sets, try to infer from there
+    if (course.tee_sets && course.tee_sets.length > 0) {
+      // Check if any tee set has front_nine_yardage but not back_nine_yardage
+      const hasOnlyFrontNine = course.tee_sets.some(
+        (teeSet: any) => teeSet.front_nine_yardage && !teeSet.back_nine_yardage
+      );
+      
+      if (hasOnlyFrontNine) {
+        return 9;
+      }
+      
+      // Check total yardage - if it's typical for 9 holes
+      const firstTeeWithYardage = course.tee_sets.find((teeSet: any) => teeSet.total_yardage);
+      if (firstTeeWithYardage && firstTeeWithYardage.total_yardage < 4000) {
+        return 9;
+      }
+    }
+    
+    // Default to 18 if we can't determine
+    return 18;
+  };
+
+  // Function to count tee sets for a course
+  const getTeeCount = (course: any) => {
+    // Check if tee_sets exists and has items
+    if (course.tee_sets && Array.isArray(course.tee_sets) && course.tee_sets.length > 0) {
+      return course.tee_sets.length;
+    }
+    
+    // Check if tees exists and has items
+    if (course.tees && Array.isArray(course.tees) && course.tees.length > 0) {
+      return course.tees.length;
+    }
+    
+    return 0;
+  };
+
   const renderCourseItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.courseItem}
@@ -50,23 +133,23 @@ export default function CoursesScreen() {
               <FontAwesome5 name="flag" size={14} color={COLORS.primary} />
             </View>
             <Text style={styles.detailLabel}>Holes</Text>
-            <Text style={styles.detailValue}>{item.holes?.length || 18}</Text>
+            <Text style={styles.detailValue}>{getHoleCount(item)}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <View style={styles.detailIconContainer}>
+              <MaterialCommunityIcons name="golf-cart" size={14} color={COLORS.primary} />
+            </View>
+            <Text style={styles.detailLabel}>Par</Text>
+            <Text style={styles.detailValue}>
+              {getMostCommonPar(item)}
+            </Text>
           </View>
           <View style={styles.detailItem}>
             <View style={styles.detailIconContainer}>
               <FontAwesome5 name="golf-ball" size={14} color={COLORS.primary} />
             </View>
-            <Text style={styles.detailLabel}>Par</Text>
-            <Text style={styles.detailValue}>
-              {item.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A'}
-            </Text>
-          </View>
-          <View style={styles.detailItem}>
-            <View style={styles.detailIconContainer}>
-              <FontAwesome5 name="ruler-horizontal" size={14} color={COLORS.primary} />
-            </View>
             <Text style={styles.detailLabel}>Tees</Text>
-            <Text style={styles.detailValue}>{item.tees?.length || 0}</Text>
+            <Text style={styles.detailValue}>{getTeeCount(item)}</Text>
           </View>
         </View>
       </Card>
@@ -75,18 +158,21 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
+      <Stack.Screen 
         options={{
           title: "Golf Courses",
-          headerRight: () => (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => router.push('/courses/add' as any)}
+          headerShown: true,
+          headerBackTitle: 'Home',
+          headerLeft: () => (
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+              onPress={() => router.push('/(tabs)')}
             >
-              <Ionicons name="add" size={24} color={COLORS.primary} />
+              <Ionicons name="chevron-back" size={24} color={COLORS.textLight} />
+              <Text style={{ color: COLORS.textLight, marginLeft: 5 }}>Home</Text>
             </TouchableOpacity>
           ),
-        }}
+        }} 
       />
 
       {isLoading && !refreshing ? (

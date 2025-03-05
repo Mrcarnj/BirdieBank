@@ -1,19 +1,22 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { COLORS } from '../../constants/theme';
+import { useTheme } from '../../components/ThemeProvider';
 
 export default function CoursesLayout() {
+  const { colors } = useTheme();
+
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: COLORS.primary,
-        },
-        headerTintColor: COLORS.secondary,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
+    <Stack screenOptions={{
+      headerShown: true,
+      headerStyle: {
+        backgroundColor: colors.primary,
+      },
+      headerTintColor: colors.textLight,
+      headerTitleStyle: {
+        fontWeight: 'bold',
+      },
+      headerBackTitle: 'Home',
+    }}
     />
   );
 } 

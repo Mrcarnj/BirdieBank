@@ -83,42 +83,53 @@ export const fetchCourses = createAsyncThunk(
   'course/fetchCourses',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Fetching courses...');
-      
-      // First get all courses
-      const { data: coursesData, error: coursesError } = await supabase
+      // Fetch courses from Supabase
+      const { data: coursesData, error } = await supabase
         .from('courses')
         .select('*');
       
-      if (coursesError) throw coursesError;
+      if (error) throw error;
       
-      // If we have courses, fetch the club data for each course
       if (coursesData && coursesData.length > 0) {
-        console.log(`Found ${coursesData.length} courses, fetching club data...`);
-        
-        // Create an array of promises to fetch club data for each course
+        // Fetch club data for each course
         const coursesWithClubData = await Promise.all(
           coursesData.map(async (course) => {
-            if (!course.club_id) {
-              return { ...course, clubData: null };
+            let clubData = null;
+            
+            // Get club data
+            if (course.club_id) {
+              const { data: clubResult, error: clubError } = await supabase
+                .from('clubs')
+                .select('*')
+                .eq('id', course.club_id)
+                .single();
+              
+              if (!clubError && clubResult) {
+                clubData = clubResult;
+              }
             }
             
-            const { data: clubData, error: clubError } = await supabase
-              .from('clubs')
-              .select('city, state')
-              .eq('id', course.club_id)
-              .single();
+            // Get tee sets for this course
+            const { data: teeSets, error: teeSetsError } = await supabase
+              .from('tee_sets')
+              .select('*')
+              .eq('course_id', course.id)
+              .order('total_yardage', { ascending: false });
             
-            if (clubError) {
-              console.error(`Error fetching club data for course ${course.id}:`, clubError);
-              return { ...course, clubData: null };
+            if (teeSetsError) {
+              console.error(`Error fetching tee sets for course ${course.id}:`, teeSetsError);
+              return { ...course, clubData, tee_sets: [] };
             }
             
-            return { ...course, clubData };
+            return { 
+              ...course, 
+              clubData,
+              tee_sets: teeSets || [] 
+            };
           })
         );
         
-        console.log('First course with club data:', JSON.stringify(coursesWithClubData[0], null, 2));
+        console.log('First course with club data and tee sets:', JSON.stringify(coursesWithClubData[0], null, 2));
         return coursesWithClubData;
       }
       
