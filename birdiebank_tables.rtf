@@ -110,6 +110,7 @@ CREATE TABLE friends (
   name TEXT NOT NULL,
   handicap_index DECIMAL(4, 1),
   profile_image_url TEXT,
+  email TEXT,
   is_guest BOOLEAN DEFAULT FALSE,
   is_favorite BOOLEAN DEFAULT FALSE,
   last_played_date TIMESTAMPTZ,

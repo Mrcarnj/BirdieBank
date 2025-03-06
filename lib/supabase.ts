@@ -30,6 +30,55 @@ supabase.auth.onAuthStateChange((event, session) => {
   console.log('Auth state changed:', event, !!session);
 }); 
 
+// Create transaction helper functions
+// Note: These functions require stored procedures to be created in the database
+// You'll need to create these functions in your Supabase SQL editor:
+
+/*
+-- Create transaction functions in Supabase SQL editor
+CREATE OR REPLACE FUNCTION begin_transaction()
+RETURNS void AS $$
+BEGIN
+  EXECUTE 'BEGIN';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION commit_transaction()
+RETURNS void AS $$
+BEGIN
+  EXECUTE 'COMMIT';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION rollback_transaction()
+RETURNS void AS $$
+BEGIN
+  EXECUTE 'ROLLBACK';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+*/
+
+// Transaction helper class
+export class SupabaseTransaction {
+  /**
+   * Execute a function without transaction support
+   * This is a temporary workaround until proper transaction support is implemented
+   * @param callback Function to execute
+   * @returns Result of the callback function
+   */
+  static async execute<T>(callback: () => Promise<T>): Promise<T> {
+    try {
+      console.log('Executing database operations (without transaction support)');
+      const result = await callback();
+      console.log('Database operations completed successfully');
+      return result;
+    } catch (error) {
+      console.error('Error executing database operations:', error);
+      throw error;
+    }
+  }
+}
+
 function config(arg0: { path: any; }) {
   throw new Error('Function not implemented.');
 }

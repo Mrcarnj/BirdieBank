@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter, Stack } from 'expo-router';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../../components/ThemeProvider';
 
 import { COLORS, SIZES, SHADOWS, FONTS } from '../../constants/theme';
 import Card from '../../components/Card';
-import { fetchCourses } from '../../store/slices/courseSlice';
+import { fetchCourses, Course } from '../../store/slices/courseSlice';
 import { AppDispatch, RootState } from '../../store';
 import { createFontStyle } from '../../utils/styleUtils';
 
@@ -22,6 +24,7 @@ export default function CoursesScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { courses, isLoading } = useSelector((state: RootState) => state.course);
+  const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -34,59 +37,128 @@ export default function CoursesScreen() {
     setRefreshing(false);
   };
 
-  const renderCourseItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.courseItem}
-      onPress={() => router.push(`/courses/${item.id}` as any)}
+  // Function to find the most common par value from tee sets
+  const getMostCommonPar = (course: any) => {
+    // If no tee_sets, fall back to holes calculation
+    if (!course.tee_sets || course.tee_sets.length === 0) {
+      return course.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A';
+    }
+    
+    // Count occurrences of each par value
+    const parCounts: Record<number, number> = {};
+    course.tee_sets.forEach((teeSet: any) => {
+      if (teeSet.par) {
+        parCounts[teeSet.par] = (parCounts[teeSet.par] || 0) + 1;
+      }
+    });
+    
+    // If no par values found in tee_sets
+    if (Object.keys(parCounts).length === 0) {
+      return course.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A';
+    }
+    
+    // Find the most common par value
+    let mostCommonPar = 0;
+    let highestCount = 0;
+    
+    Object.entries(parCounts).forEach(([par, count]) => {
+      if (count > highestCount) {
+        highestCount = count;
+        mostCommonPar = parseInt(par);
+      }
+    });
+    
+    return mostCommonPar || 'N/A';
+  };
+
+  // Function to get the correct hole count
+  const getHoleCount = (course: Course) => {
+    // First check if hole_count is explicitly set
+    if (course.hole_count) {
+      return course.hole_count;
+    }
+    
+    // Then check if we have holes data
+    if (course.holes && course.holes.length > 0) {
+      return course.holes.length;
+    }
+    
+    // Default to 18 if we don't have any information
+    return 18;
+  };
+
+  // Function to get the number of tee options
+  const getTeeCount = (course: Course) => {
+    // First check if we have tee_sets data
+    if (course.tee_sets && course.tee_sets.length > 0) {
+      return course.tee_sets.length;
+    }
+    
+    // Then check if we have tees data
+    if (course.tees && course.tees.length > 0) {
+      return course.tees.length;
+    }
+    
+    // Default to 0 if we don't have any information
+    return 0;
+  };
+
+  const renderCourseItem = ({ item }: { item: Course }) => (
+    <Card
+      key={item.id}
+      style={{ ...styles.courseCard, backgroundColor: colors.card }}
+      onPress={() => router.push(`/courses/${item.id}`)}
     >
-      <Card style={styles.courseCard}>
-        <View style={styles.courseHeader}>
-          <Text style={styles.courseName}>{item.name}</Text>
-          <FontAwesome5 name="chevron-right" size={16} color={COLORS.primary} />
+      <View style={styles.courseHeader}>
+        <Text style={[styles.courseName, { color: colors.textPrimary }]}>{item.name}</Text>
+        <FontAwesome5 name="chevron-right" size={16} color={colors.primary} />
+      </View>
+      
+      <View style={styles.courseDetails}>
+        <View style={styles.detailItem}>
+          <View style={styles.detailIconContainer}>
+            <FontAwesome5 name="flag" size={14} color={colors.primary} />
+          </View>
+          <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Holes</Text>
+          <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{getHoleCount(item)}</Text>
         </View>
-        <View style={styles.courseDetails}>
-          <View style={styles.detailItem}>
-            <View style={styles.detailIconContainer}>
-              <FontAwesome5 name="flag" size={14} color={COLORS.primary} />
-            </View>
-            <Text style={styles.detailLabel}>Holes</Text>
-            <Text style={styles.detailValue}>{item.holes?.length || 18}</Text>
+        
+        <View style={styles.detailItem}>
+          <View style={styles.detailIconContainer}>
+            <FontAwesome5 name="golf-ball" size={14} color={colors.primary} />
           </View>
-          <View style={styles.detailItem}>
-            <View style={styles.detailIconContainer}>
-              <FontAwesome5 name="golf-ball" size={14} color={COLORS.primary} />
-            </View>
-            <Text style={styles.detailLabel}>Par</Text>
-            <Text style={styles.detailValue}>
-              {item.holes?.reduce((total: number, hole: any) => total + hole.par, 0) || 'N/A'}
-            </Text>
-          </View>
-          <View style={styles.detailItem}>
-            <View style={styles.detailIconContainer}>
-              <FontAwesome5 name="ruler-horizontal" size={14} color={COLORS.primary} />
-            </View>
-            <Text style={styles.detailLabel}>Tees</Text>
-            <Text style={styles.detailValue}>{item.tees?.length || 0}</Text>
-          </View>
+          <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Tees</Text>
+          <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{getTeeCount(item)}</Text>
         </View>
-      </Card>
-    </TouchableOpacity>
+        
+        <View style={styles.detailItem}>
+          <View style={styles.detailIconContainer}>
+            <MaterialIcons name="golf-course" size={14} color={colors.primary} />
+          </View>
+          <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Par</Text>
+          <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{getMostCommonPar(item)}</Text>
+        </View>
+      </View>
+    </Card>
   );
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
+      <Stack.Screen 
         options={{
           title: "Golf Courses",
-          headerRight: () => (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => router.push('/courses/add' as any)}
+          headerShown: true,
+          headerBackTitle: 'Home',
+          headerLeft: () => (
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+              onPress={() => router.push('/(tabs)')}
             >
-              <Ionicons name="add" size={24} color={COLORS.primary} />
+              <Ionicons name="chevron-back" size={24} color={COLORS.textLight} />
+              <Text style={{ color: COLORS.textLight, marginLeft: 5 }}>Home</Text>
             </TouchableOpacity>
           ),
-        }}
+        }} 
       />
 
       {isLoading && !refreshing ? (
@@ -178,6 +250,10 @@ const styles = StyleSheet.create({
   courseName: {
     ...createFontStyle(FONTS.h4),
     color: COLORS.textPrimary,
+  },
+  courseLocation: {
+    ...createFontStyle(FONTS.body5),
+    color: COLORS.textSecondary,
   },
   courseDetails: {
     flexDirection: 'row',

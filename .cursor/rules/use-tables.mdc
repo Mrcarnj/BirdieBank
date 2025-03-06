@@ -1,0 +1,94 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+# Cursor Rules for BirdieBank Golf App Development
+
+## Database Relationship Guidelines
+
+1. **Always Reference Database Schema First**
+   - Before suggesting any database operations, review the [birdiebank_tables.rtf](mdc:birdiebank_tables.rtf) file to understand table relationships
+   - Verify foreign key connections between tables before writing queries or data access code
+   - Respect the established data model hierarchy defined in the schema
+
+2. **Table Relationship Validation**
+   - Cross-check any join operations against the defined relationships in [birdiebank_tables.rtf](mdc:birdiebank_tables.rtf)
+   - For any data retrieval spanning multiple tables, trace the relationship path through the schema
+   - Flag potential relationship violations or inefficient query patterns
+
+3. **Schema-First Code Generation**
+   - Generate model interfaces/types that strictly adhere to the database schema
+   - Ensure prop types in React components match the database field types
+   - Maintain consistency between API request/response structures and database schema
+
+## Code Modification Guidelines
+
+1. **Precise Change Documentation**
+   - For each code modification, provide:
+      - The exact file path that was modified
+      - The specific lines/sections that were changed
+      - A before/after comparison when appropriate
+
+2. **Change Justification Requirements**
+   - Explain the technical rationale behind each change
+   - Identify the specific issue being addressed
+   - Connect the change to improved app performance, maintainability, or user experience
+   - Reference any related best practices or React Native patterns
+
+3. **Implementation Context**
+   - Detail how the change fits within the broader codebase
+   - Explain any side effects that might occur from the change
+   - Provide follow-up steps if the change is part of a larger implementation
+
+## Golf-Specific Data Handling
+
+1. **Golf Scoring Validation**
+   - Ensure scoring calculations follow standard golf rules
+   - Verify handicap calculations match established formulas
+   - Confirm proper handling of special golf scenarios
+
+2. **Course Data Integrity**
+   - Validate course information against the database schema
+   - Ensure proper relationships between courses, holes, and player scores
+   - Verify accurate tracking of historical play data
+
+3. **Gambling Games**
+   - review [gambling_games.rtf](mdc:gambling_games.rtf) for scoring and details when creating or editing any games
+
+## React Native Best Practices
+
+1. **Performance Optimization Focus**
+   - Identify and suggest improvements for inefficient renders
+   - Recommend appropriate use of useMemo and useCallback for expensive operations
+   - Suggest optimizations for list rendering with FlatList or similar components
+
+2. **Mobile-First Development**
+   - Ensure UI components are designed for touch interaction
+   - Verify responsive layouts work across different device sizes
+   - Confirm proper handling of device orientation changes
+
+3. **Native Module Integration**
+   - When suggesting native module usage, verify compatibility with both iOS and Android
+   - Provide complete implementation steps for any native bridging
+   - Check for potential permission requirements on both platforms
+
+## Code Quality Standards
+
+1. **Consistent Styling**
+   - Follow the established project styling conventions
+   - Ensure proper use of theming system for UI components
+   - Maintain consistent naming conventions across the codebase
+
+2. **Testing Recommendations**
+   - Suggest appropriate test cases for new functionality
+   - Ensure data access logic has proper error handling
+   - Recommend UI tests for critical user flows
+
+3. **Documentation Requirements**
+   - Add or update comments for complex logic
+   - Document any non-obvious database relationships being utilized
+   - Update README or other documentation when introducing new features

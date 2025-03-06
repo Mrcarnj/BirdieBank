@@ -152,11 +152,6 @@ export default function HomeScreen() {
   const renderNearbyCourses = () => {
     if (courses.length === 0) return null;
 
-    // Debug: Log the first course to see its structure
-    if (courses.length > 0) {
-      console.log('First course data in renderNearbyCourses:', JSON.stringify(courses[0], null, 2));
-    }
-
     return (
       <View style={styles.nearbyCoursesContainer}>
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Nearby Courses</Text>

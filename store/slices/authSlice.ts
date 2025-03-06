@@ -4,10 +4,16 @@ import { supabase } from '../../lib/supabase';
 interface User {
   id: string;
   email: string;
-  username?: string;
-  name?: string;
-  handicapIndex?: number;
-  profileImageUrl?: string;
+  first_name?: string;
+  last_name?: string;
+  gender?: string;
+  handicap?: number;
+  state?: string;
+  country?: string;
+  profile_image_url?: string;
+  
+  // Computed properties for convenience
+  name?: string; // Combination of first_name and last_name
 }
 
 interface AuthState {
@@ -24,7 +30,7 @@ const initialState: AuthState = {
 
 export const signUp = createAsyncThunk(
   'auth/signUp',
-  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+  async ({ email, password }: { email: string; password: string }, { rejectWithValue, dispatch }) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -32,7 +38,30 @@ export const signUp = createAsyncThunk(
       });
       
       if (error) throw error;
-      return data.user;
+      
+      if (data.user) {
+        // Create a new user record in the users table
+        const { error: userError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+            },
+          ]);
+        
+        if (userError) throw userError;
+        
+        // If sign up successful, fetch the user profile data
+        dispatch(fetchUserProfile(data.user.id));
+        
+        return {
+          id: data.user.id,
+          email: data.user.email || '',
+        };
+      }
+      
+      return null;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -41,7 +70,7 @@ export const signUp = createAsyncThunk(
 
 export const signIn = createAsyncThunk(
   'auth/signIn',
-  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+  async ({ email, password }: { email: string; password: string }, { rejectWithValue, dispatch }) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -49,7 +78,18 @@ export const signIn = createAsyncThunk(
       });
       
       if (error) throw error;
-      return data.user;
+      
+      if (data.user) {
+        // If sign in successful, fetch the user profile data
+        dispatch(fetchUserProfile(data.user.id));
+        
+        return {
+          id: data.user.id,
+          email: data.user.email || '',
+        };
+      }
+      
+      return null;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -71,11 +111,57 @@ export const signOut = createAsyncThunk(
 
 export const getSession = createAsyncThunk(
   'auth/getSession',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       const { data, error } = await supabase.auth.getSession();
+      
       if (error) throw error;
-      return data.session?.user || null;
+      
+      if (data.session) {
+        // If we have a session, fetch the user profile data
+        const user = data.session.user;
+        dispatch(fetchUserProfile(user.id));
+        
+        return {
+          id: user.id,
+          email: user.email || '',
+        };
+      }
+      
+      return null;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const fetchUserProfile = createAsyncThunk(
+  'auth/fetchUserProfile',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      // Fetch user profile data from the users table
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      // If no data found, return null
+      if (!data) {
+        return null;
+      }
+      
+      // Create a name property by combining first_name and last_name
+      const name = data.first_name && data.last_name 
+        ? `${data.first_name} ${data.last_name}`
+        : data.first_name || data.last_name || undefined;
+      
+      return {
+        ...data,
+        name
+      };
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -141,6 +227,25 @@ const authSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(getSession.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      // Handle fetchUserProfile
+      .addCase(fetchUserProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (action.payload && state.user) {
+          // Update the user object with profile data
+          state.user = {
+            ...state.user,
+            ...action.payload
+          };
+        }
+      })
+      .addCase(fetchUserProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       });

@@ -8,6 +8,11 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 import 'react-native-url-polyfill/auto';
 
+type CourseRouteParams = {
+  id: string;
+  source:'home';
+}
+
 // Inner layout component that has access to theme
 function AppLayout() {
   const { colors, isDarkMode } = useTheme();
@@ -17,6 +22,7 @@ function AppLayout() {
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.primary} />
       <Stack
         screenOptions={{
+          headerShown: false,
           headerStyle: {
             backgroundColor: colors.primary,
           },
@@ -29,10 +35,10 @@ function AppLayout() {
           },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'BirdieBank' }} />
-        <Stack.Screen name="auth/login" options={{ title: 'Login', headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ title: 'Register', headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen 
+            name="(tabs)" 
+            options={{ headerShown: false }} 
+          />
       </Stack>
     </>
   );

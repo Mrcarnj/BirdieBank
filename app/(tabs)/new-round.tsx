@@ -1,437 +1,294 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
-  TextInput,
-  StyleProp,
-  ViewStyle,
-  TextStyle,
-  ImageStyle,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRouter } from 'expo-router';
 import { FONTS, SIZES } from '../../constants/theme';
-import { RootState, AppDispatch } from '../../store';
-import { Course, fetchCourses, fetchNearbyCourses, selectCourse, Tee } from '../../store/slices/courseSlice';
-import { fetchPlayers, selectPlayer, addGuestPlayer, Player, PlayerWithTee } from '../../store/slices/playerSlice';
+import { RootState, AppDispatch, store } from '../../store';
+import { Course, fetchCourses, fetchNearbyCourses, selectCourse, Tee, fetchCourseById } from '../../store/slices/courseSlice';
+import { fetchPlayers, selectPlayer, Player as BasePlayer, PlayerWithTee, createFriend, ensureUserInFriendsTable } from '../../store/slices/playerSlice';
 import { startNewRound } from '../../store/slices/roundSlice';
-import { selectGame } from '../../store/slices/gameSlice';
-import Card from '../../components/Card';
-import Button from '../../components/Button';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import * as Location from 'expo-location';
+import { selectGame, removeGame } from '../../store/slices/gameSlice';
 import { createFontStyle } from '../../utils/styleUtils';
 import { useTheme } from '../../components/ThemeProvider';
+import { GAME_TYPES } from '../../utils/games';
 
-// Find the GAME_TYPES array and add an icon property to each game type
-const GAME_TYPES = [
-  { type: 'nassau', name: 'Nassau', description: 'Front 9, Back 9, Total 18', icon: 'flag' },
-  { type: 'skins', name: 'Skins', description: 'Each hole is worth a set amount', icon: 'dollar-sign' },
-  { type: 'match-play', name: 'Match Play', description: 'Win, lose, or halve each hole', icon: 'trophy' },
-  { type: 'stableford', name: 'Stableford', description: 'Points based on score relative to par', icon: 'chart-bar' },
-  { type: 'vegas', name: 'Vegas', description: 'Team game with special scoring', icon: 'dice' },
-  { type: 'wolf', name: 'Wolf', description: 'Players take turns being the "Wolf"', icon: 'paw' },
-];
+// Import new components
+import CourseSelection from '../../components/new-round/CourseSelection';
+import PlayerSelection from '../../components/new-round/PlayerSelection';
+import GameSelection from '../../components/new-round/GameSelection';
+import GameConfigModal, { GameConfig } from '../../components/new-round/GameConfigModal';
+import TeeSelectionModal from '../../components/new-round/TeeSelectionModal';
+import AddPlayerModal from '../../components/new-round/AddPlayerModal';
+
+// Helper function to determine if a color is white or very light
+const isLightColor = (color: string) => {
+  // Check if color is white or very close to white
+  return color === '#FFFFFF' || color === '#FFF' || color === 'white' || color.toLowerCase() === '#ffffff';
+};
+
+// Helper function to format course handicap with proper golf notation
+const formatCourseHandicap = (handicap: number): string => {
+  if (handicap < 0) {
+    return `+${Math.abs(handicap)}`;
+  }
+  return handicap.toString();
+};
+
+// Extend the Player interface to include email
+interface Player extends BasePlayer {
+  email?: string;
+}
 
 export default function NewRoundScreen() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const { user } = useSelector((state: RootState) => state.auth);
   const { courses, nearbyCourses, selectedCourse } = useSelector((state: RootState) => state.course);
   const { players, selectedPlayers } = useSelector((state: RootState) => state.player);
-  const { availableGames, selectedGames } = useSelector((state: RootState) => state.game);
+  const { selectedGames } = useSelector((state: RootState) => state.game);
   const { colors, shadows } = useTheme();
   
+  // Add ScrollView reference
+  const scrollViewRef = useRef<ScrollView>(null);
+  
+  // State variables
   const [step, setStep] = useState(1);
   const [holeSelection, setHoleSelection] = useState<'front9' | 'back9' | 'full18' | 'custom'>('full18');
-  const [customStartHole, setCustomStartHole] = useState(1);
+  const [startingHole, setStartingHole] = useState(1);
   const [locationPermission, setLocationPermission] = useState(false);
+  const [showTeeModal, setShowTeeModal] = useState(false);
+  const [selectedPlayerForTee, setSelectedPlayerForTee] = useState<Player | null>(null);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [newPlayerFirstName, setNewPlayerFirstName] = useState('');
+  const [newPlayerLastName, setNewPlayerLastName] = useState('');
+  const [newPlayerHandicap, setNewPlayerHandicap] = useState('');
+  const [newPlayerEmail, setNewPlayerEmail] = useState('');
+  const [isPlusHandicap, setIsPlusHandicap] = useState(false);
+  const [addPlayerTab, setAddPlayerTab] = useState<'friends' | 'new'>('friends');
 
+  // Game configuration state
+  const [showGameConfigModal, setShowGameConfigModal] = useState(false);
+  const [gameToConfig, setGameToConfig] = useState<{
+    type: string;
+    name: string;
+    description: string;
+    icon: string;
+  } | null>(null);
+
+  // Load initial data
   useEffect(() => {
+    dispatch(fetchCourses());
     if (user) {
-      dispatch(fetchCourses());
       dispatch(fetchPlayers(user.id));
-      checkLocationPermission();
+      
+      // Ensure the current user exists in the friends table
+      dispatch(ensureUserInFriendsTable(user.id))
+        .unwrap()
+        .then(friendId => {
+          console.log('User ensured in friends table with ID:', friendId);
+        })
+        .catch(error => {
+          console.error('Failed to ensure user in friends table:', error);
+        });
     }
-  }, [user]);
+    checkLocationPermission();
+  }, [dispatch, user]);
 
+  // Check location permission for nearby courses
   const checkLocationPermission = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    setLocationPermission(status === 'granted');
-    
-    if (status === 'granted') {
+    try {
+      // Location permission logic would go here
+      // For now, just set to true
+      setLocationPermission(true);
       dispatch(fetchNearbyCourses());
+    } catch (error) {
+      console.log('Location permission denied');
     }
   };
 
+  // Handle course selection
   const handleCourseSelect = (course: Course) => {
-    dispatch(selectCourse(course));
+    const safeHoles = course.holes || [];
+    const safeCourse = {
+      ...course,
+      holes: safeHoles
+    };
+    
+    dispatch(selectCourse(safeCourse));
+    
+    setTimeout(() => {
+      const courseState = store.getState().course;
+      if (courseState.needsHoleData && courseState.selectedCourse) {
+        console.log('Fetching detailed course data...');
+        dispatch(fetchCourseById(courseState.selectedCourse.id))
+          .unwrap()
+          .then(() => {
+            console.log('Course details fetched successfully');
+          })
+          .catch(error => {
+            console.error('Failed to fetch course details:', error);
+            Alert.alert('Error', 'Failed to load course details. Please try selecting a different course.');
+          });
+      }
+    }, 100);
+    
+    // Move to player selection step and scroll to top
     setStep(2);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
+  // Handle player selection
   const handlePlayerSelect = (player: Player, tee: Tee | null) => {
     dispatch(selectPlayer({ player, tee }));
   };
 
-  const handleAddGuestPlayer = () => {
-    // Simple implementation - in a real app, you'd have a modal for name input
-    const guestName = `Guest ${players.filter(p => p.isGuest).length + 1}`;
-    dispatch(addGuestPlayer({ name: guestName }));
+  // Handle adding a player
+  const handleAddPlayer = () => {
+    // Reset the form fields
+    setNewPlayerFirstName('');
+    setNewPlayerLastName('');
+    setNewPlayerHandicap('');
+    setNewPlayerEmail('');
+    setIsPlusHandicap(false);
+    
+    // Always default to friends tab
+    setAddPlayerTab('friends');
+    
+    // Show the modal
+    setShowAddPlayerModal(true);
   };
 
+  // Handle game selection
   const handleGameSelect = (gameType: string) => {
-    const game = availableGames.find(g => g.type === gameType);
-    if (game && selectedPlayers.length > 0) {
-      dispatch(selectGame({
-        type: game.type,
-        players: selectedPlayers,
-        stake: 1, // Default stake amount
-      }));
+    if (selectedPlayers.length < 2) {
+      Alert.alert('Not Enough Players', 'You need at least 2 players to set up a game.');
+      return;
+    }
+    
+    const game = GAME_TYPES.find(g => g.type === gameType);
+    if (game) {
+      // Check if game is already selected
+      const isAlreadySelected = selectedGames.some(g => g.type === gameType);
+      
+      if (isAlreadySelected) {
+        // If already selected, remove it
+        dispatch(removeGame(selectedGames.find(g => g.type === gameType)?.id || ''));
+    } else {
+        // Open game configuration modal
+        setGameToConfig(game);
+        setShowGameConfigModal(true);
+      }
     }
   };
 
+  // Handle saving game configuration
+  const handleSaveGameConfig = (config: GameConfig) => {
+    // Add the game to the selected games
+      dispatch(selectGame({
+      type: config.type as any,
+        players: selectedPlayers,
+      stake: config.stake,
+      settings: config.settings
+      }));
+    
+    // Close the modal
+    setShowGameConfigModal(false);
+    setGameToConfig(null);
+  };
+
+  // Handle starting the round
   const handleStartRound = () => {
     if (!selectedCourse) {
       Alert.alert('Error', 'Please select a course');
       return;
     }
 
-    if (selectedPlayers.length === 0) {
+    if (!selectedPlayers || selectedPlayers.length === 0) {
       Alert.alert('Error', 'Please select at least one player');
+      return;
+    }
+    
+    const safeSelectedCourse = {
+      ...selectedCourse,
+      holes: selectedCourse.holes || []
+    };
+    
+    if (!safeSelectedCourse.holes || safeSelectedCourse.holes.length === 0) {
+      Alert.alert('Error', 'The selected course has no hole data. Please select a different course or contact support.');
       return;
     }
 
     dispatch(startNewRound({
-      course: selectedCourse,
+      course: safeSelectedCourse,
       players: selectedPlayers,
       holeSelection,
-      customStartHole: holeSelection === 'custom' ? customStartHole : undefined,
+      customStartHole: startingHole,
       userId: user?.id || '',
     }));
-
-    router.replace('/rounds/currentRound');
+    
+    setTimeout(() => {
+      const roundState = store.getState().round;
+      if (roundState.error) {
+        Alert.alert('Error', roundState.error);
+        return;
+      }
+      
+      if (!roundState.currentRound) {
+        Alert.alert('Error', 'Failed to create round. Please try again.');
+        return;
+      }
+      
+      router.replace('/rounds/currentRound');
+    }, 100);
   };
 
-  const renderCourseSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Select a Course</Text>
-      
-      {locationPermission && nearbyCourses.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Nearby Courses</Text>
-          {nearbyCourses.map(course => (
-            <Card
-              key={course.id}
-              onPress={() => handleCourseSelect(course)}
-              style={styles.courseCard}
-            >
-              <View style={styles.courseHeader}>
-                <Text style={[styles.courseName, { color: colors.textPrimary }]}>{course.name}</Text>
-                <FontAwesome5 name="map-marker-alt" size={16} color={colors.primary} />
-              </View>
-              <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
-                {course.holes.length} holes • {course.tees.length} tee options
-              </Text>
-            </Card>
-          ))}
-        </View>
-      )}
-      
-      <View style={styles.sectionContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>All Courses</Text>
-        {courses.map(course => (
-          <Card
-            key={course.id}
-            onPress={() => handleCourseSelect(course)}
-            style={styles.courseCard}
-          >
-            <View style={styles.courseHeader}>
-              <Text style={[styles.courseName, { color: colors.textPrimary }]}>{course.name}</Text>
-            </View>
-            <Text style={[styles.courseDetails, { color: colors.textSecondary }]}>
-              {course.holes.length} holes • {course.tees.length} tee options
-            </Text>
-          </Card>
-        ))}
-      </View>
-    </View>
-  );
+  // Handle tee selection
+  const handleTeeSelect = (player: Player, tee: Tee) => {
+    dispatch(selectPlayer({ player, tee }));
+    setShowTeeModal(false);
+    setSelectedPlayerForTee(null);
+  };
 
-  const renderPlayerSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Select Players</Text>
-      
-      {selectedCourse && (
-        <Card style={styles.selectedCourseCard}>
-          <View style={styles.selectedCourseHeader}>
-            <Text style={[styles.selectedCourseName, { color: colors.textPrimary }]}>{selectedCourse.name}</Text>
-            <TouchableOpacity onPress={() => setStep(1)}>
-              <Text style={[styles.changeText, { color: colors.primary }]}>Change</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.selectedCourseDetails, { color: colors.textSecondary }]}>
-            {selectedCourse.holes.length} holes • {selectedCourse.tees.length} tee options
-          </Text>
-        </Card>
-      )}
-      
-      <View style={styles.sectionContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Your Players</Text>
-          <Button 
-            title="Add Guest" 
-            size="small"
-            variant="outline"
-            onPress={handleAddGuestPlayer}
-          />
-        </View>
-        
-        {players.map(player => {
-          const isSelected = selectedPlayers.some(p => p.id === player.id);
-          return (
-            <Card
-              key={player.id}
-              style={{
-                ...styles.playerCard,
-                ...(isSelected ? { borderColor: colors.primary, borderWidth: 2 } : {})
-              }}
-              onPress={() => handlePlayerSelect(player, selectedCourse?.tees[0] || null)}
-            >
-              <View style={styles.playerInfo}>
-                <View style={[styles.playerAvatar, { backgroundColor: isSelected ? colors.primary : colors.secondaryLight }]}>
-                  <Text style={[styles.playerInitial, { color: isSelected ? colors.textLight : colors.primary }]}>
-                    {player.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.playerDetails}>
-                  <Text style={[styles.playerName, { color: colors.textPrimary }]}>{player.name}</Text>
-                  {player.handicapIndex !== undefined && (
-                    <Text style={[styles.playerHandicap, { color: colors.textSecondary }]}>
-                      Handicap: {player.handicapIndex < 0 ? '+' : ''}{Math.abs(player.handicapIndex).toFixed(1)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              {isSelected && selectedCourse && (
-                <View style={styles.teeSelection}>
-                  <Text style={[styles.teeLabel, { color: colors.textSecondary }]}>Tee:</Text>
-                  <View style={styles.teeOptions}>
-                    {selectedCourse.tees.map(tee => {
-                      const selectedPlayerTee = selectedPlayers.find(p => p.id === player.id)?.selectedTee;
-                      const isTeeSelected = selectedPlayerTee?.id === tee.id;
-                      return (
-                        <TouchableOpacity
-                          key={tee.id}
-                          style={[
-                            styles.teeOption,
-                            { backgroundColor: isTeeSelected ? colors.primary : colors.secondaryLight }
-                          ]}
-                          onPress={() => handlePlayerSelect(player, tee)}
-                        >
-                          <Text style={[
-                            styles.teeText,
-                            { color: isTeeSelected ? colors.textLight : colors.textPrimary }
-                          ]}>
-                            {tee.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-            </Card>
-          );
-        })}
-      </View>
-      
-      <View style={styles.holeSelectionContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Hole Selection</Text>
-        <View style={styles.holeOptions}>
-          <TouchableOpacity
-            style={[
-              styles.holeOption,
-              holeSelection === 'front9' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => setHoleSelection('front9')}
-          >
-            <Text style={[
-              styles.holeOptionText,
-              { color: holeSelection === 'front9' ? colors.textLight : colors.textPrimary }
-            ]}>
-              Front 9
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.holeOption,
-              holeSelection === 'back9' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => setHoleSelection('back9')}
-          >
-            <Text style={[
-              styles.holeOptionText,
-              { color: holeSelection === 'back9' ? colors.textLight : colors.textPrimary }
-            ]}>
-              Back 9
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.holeOption,
-              holeSelection === 'full18' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => setHoleSelection('full18')}
-          >
-            <Text style={[
-              styles.holeOptionText,
-              { color: holeSelection === 'full18' ? colors.textLight : colors.textPrimary }
-            ]}>
-              Full 18
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.holeOption,
-              holeSelection === 'custom' && { backgroundColor: colors.primary }
-            ]}
-            onPress={() => setHoleSelection('custom')}
-          >
-            <Text style={[
-              styles.holeOptionText,
-              { color: holeSelection === 'custom' ? colors.textLight : colors.textPrimary }
-            ]}>
-              Custom
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        {holeSelection === 'custom' && (
-          <View style={styles.customHoleContainer}>
-            <Text style={[styles.customHoleLabel, { color: colors.textSecondary }]}>Starting Hole:</Text>
-            <TextInput
-              style={[styles.customHoleInput, { 
-                color: colors.textPrimary,
-                borderColor: colors.border,
-                backgroundColor: colors.card
-              }]}
-              value={customStartHole.toString()}
-              onChangeText={(text) => {
-                const hole = parseInt(text);
-                if (!isNaN(hole) && hole >= 1 && hole <= 18) {
-                  setCustomStartHole(hole);
-                }
-              }}
-              keyboardType="number-pad"
-              maxLength={2}
-            />
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        <Button
-          title="Back"
-          variant="outline"
-          onPress={() => setStep(1)}
-          style={styles.backButton}
-        />
-        <Button
-          title="Next"
-          onPress={() => setStep(3)}
-          disabled={selectedPlayers.length === 0}
-        />
-      </View>
-    </View>
-  );
+  // Open tee selection modal
+  const openTeeSelection = (player: Player) => {
+    setSelectedPlayerForTee(player);
+    setShowTeeModal(true);
+  };
 
-  const renderGameSelection = () => (
-    <View style={styles.stepContainer}>
-      <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Game Options</Text>
-      
-      <Card style={styles.summaryCard}>
-        <Text style={[styles.summaryTitle, { color: colors.textPrimary }]}>Round Summary</Text>
-        
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Course:</Text>
-          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{selectedCourse?.name}</Text>
-        </View>
-        
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Players:</Text>
-          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{selectedPlayers.length}</Text>
-        </View>
-        
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Holes:</Text>
-          <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
-            {holeSelection === 'front9' ? 'Front 9' :
-             holeSelection === 'back9' ? 'Back 9' :
-             holeSelection === 'full18' ? 'Full 18' :
-             `Custom (Starting at hole ${customStartHole})`}
-          </Text>
-        </View>
-      </Card>
-      
-      <View style={styles.sectionContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Select Game Type (Optional)</Text>
-        <View style={styles.gameGrid}>
-          {GAME_TYPES.map(game => {
-            const isSelected = selectedGames.some(g => g.type === game.type);
-            return (
-              <TouchableOpacity
-                key={game.type}
-                style={[
-                  styles.gameCard,
-                  { backgroundColor: isSelected ? colors.primary : colors.card },
-                  isSelected ? {} : { borderColor: colors.border, borderWidth: 1 }
-                ]}
-                onPress={() => handleGameSelect(game.type)}
-              >
-                <FontAwesome5
-                  name={game.icon}
-                  size={24}
-                  color={isSelected ? colors.textLight : colors.primary}
-                  style={styles.gameIcon}
-                />
-                <Text style={[
-                  styles.gameName,
-                  { color: isSelected ? colors.textLight : colors.textPrimary }
-                ]}>
-                  {game.name}
-                </Text>
-                <Text style={[
-                  styles.gameDescription,
-                  { color: isSelected ? colors.textLight + 'DD' : colors.textSecondary }
-                ]}>
-                  {game.description}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        <Button
-          title="Back"
-          variant="outline"
-          onPress={() => setStep(2)}
-          style={styles.backButton}
-        />
-        <Button
-          title="Start Round"
-          onPress={handleStartRound}
-        />
-      </View>
-    </View>
-  );
+  // Handle hole selection change
+  const handleHoleSelectionChange = (selection: 'front9' | 'back9' | 'full18' | 'custom') => {
+    setHoleSelection(selection);
+    
+    // Set default starting hole based on selection
+    if (selection === 'front9') {
+      setStartingHole(1);
+    } else if (selection === 'back9') {
+      setStartingHole(10);
+    } else if (selection === 'full18') {
+      setStartingHole(1);
+    }
+  };
+
+  // Handle starting hole change
+  const handleStartingHoleChange = (hole: number) => {
+    setStartingHole(hole);
+  };
+
+  // Modify the step navigation functions to scroll to top
+  const goToStep = (newStep: number) => {
+    setStep(newStep);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   return (
     <ScrollView 
+      ref={scrollViewRef}
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
@@ -474,9 +331,86 @@ export default function NewRoundScreen() {
         </View>
       </View>
 
-      {step === 1 && renderCourseSelection()}
-      {step === 2 && renderPlayerSelection()}
-      {step === 3 && renderGameSelection()}
+      {/* Step 1: Course Selection */}
+      {step === 1 && (
+        <CourseSelection onCourseSelect={handleCourseSelect} />
+      )}
+
+      {/* Step 2: Player Selection */}
+      {step === 2 && (
+        <PlayerSelection
+          selectedCourse={selectedCourse}
+          selectedPlayers={selectedPlayers}
+          holeSelection={holeSelection}
+          startingHole={startingHole}
+          onBack={() => goToStep(1)}
+          onNext={() => goToStep(3)}
+          onAddPlayer={handleAddPlayer}
+          onOpenTeeSelection={openTeeSelection}
+        />
+      )}
+
+      {/* Step 3: Game Selection */}
+      {step === 3 && (
+        <GameSelection
+          selectedCourse={selectedCourse}
+          selectedPlayers={selectedPlayers}
+          holeSelection={holeSelection}
+          startingHole={startingHole}
+          onBack={() => goToStep(2)}
+          onStartRound={handleStartRound}
+          onGameSelect={handleGameSelect}
+        />
+      )}
+
+      {/* Game Configuration Modal */}
+      <GameConfigModal
+        visible={showGameConfigModal}
+        onClose={() => setShowGameConfigModal(false)}
+        onSave={handleSaveGameConfig}
+        gameToConfig={gameToConfig}
+        players={selectedPlayers}
+      />
+
+      {/* Tee Selection Modal */}
+      {selectedCourse && selectedPlayerForTee && (
+        <TeeSelectionModal
+          visible={showTeeModal}
+          onClose={() => {
+            setShowTeeModal(false);
+            setSelectedPlayerForTee(null);
+          }}
+          player={selectedPlayerForTee}
+          course={selectedCourse}
+          onSelectTee={handleTeeSelect}
+        />
+      )}
+      
+      {/* Add Player Modal */}
+      <AddPlayerModal
+        visible={showAddPlayerModal}
+        onClose={() => setShowAddPlayerModal(false)}
+        activeTab={addPlayerTab}
+        onTabChange={setAddPlayerTab}
+        onSelectFriend={(player) => {
+          setShowAddPlayerModal(false);
+          setTimeout(() => openTeeSelection(player), 100);
+        }}
+        onCreatePlayer={(player) => {
+          setShowAddPlayerModal(false);
+          setTimeout(() => openTeeSelection(player), 100);
+        }}
+        firstName={newPlayerFirstName}
+        lastName={newPlayerLastName}
+        handicap={newPlayerHandicap}
+        email={newPlayerEmail}
+        isPlusHandicap={isPlusHandicap}
+        setFirstName={setNewPlayerFirstName}
+        setLastName={setNewPlayerLastName}
+        setHandicap={setNewPlayerHandicap}
+        setEmail={setNewPlayerEmail}
+        setIsPlusHandicap={setIsPlusHandicap}
+      />
     </ScrollView>
   );
 }
@@ -487,7 +421,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: SIZES.padding,
-    paddingTop: SIZES.padding / 2,
+    paddingTop: SIZES.padding * 2,
   },
   stepContainer: {
     flex: 1,
@@ -496,212 +430,20 @@ const styles = StyleSheet.create({
     ...createFontStyle(FONTS.h2),
     marginBottom: SIZES.padding,
   },
-  sectionContainer: {
-    marginBottom: SIZES.padding,
-  },
-  sectionTitle: {
-    ...createFontStyle(FONTS.h3),
-    marginBottom: SIZES.base * 1.5,
-  },
-  courseCard: {
-    marginBottom: SIZES.base * 1.5,
-  },
-  courseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  courseName: {
-    ...createFontStyle(FONTS.h4),
-  },
-  courseDetails: {
-    ...createFontStyle(FONTS.body4),
-  },
-  selectedCourseCard: {
-    marginBottom: SIZES.padding,
-  },
-  selectedCourseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base,
-  },
-  selectedCourseName: {
-    ...createFontStyle(FONTS.h4),
-  },
-  selectedCourseDetails: {
-    ...createFontStyle(FONTS.body4),
-  },
-  changeText: {
-    ...createFontStyle(FONTS.body4),
-    fontWeight: 'bold',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.base * 1.5,
-  },
-  playerCard: {
-    marginBottom: SIZES.base * 1.5,
-    padding: SIZES.padding / 1.5,
-  },
-  playerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  playerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SIZES.base * 1.5,
-  },
-  playerInitial: {
-    ...createFontStyle(FONTS.h3),
-    fontWeight: 'bold',
-  },
-  playerDetails: {
-    flex: 1,
-  },
-  playerName: {
-    ...createFontStyle(FONTS.h4),
-    marginBottom: 2,
-  },
-  playerHandicap: {
-    ...createFontStyle(FONTS.body5),
-  },
-  teeSelection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SIZES.base * 1.5,
-    paddingTop: SIZES.base,
-  },
-  teeLabel: {
-    ...createFontStyle(FONTS.body4),
-    marginRight: SIZES.base,
-  },
-  teeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  teeOption: {
-    paddingHorizontal: SIZES.base,
-    paddingVertical: SIZES.base / 2,
-    borderRadius: SIZES.radius / 2,
-    marginRight: SIZES.base,
-    marginBottom: SIZES.base / 2,
-  },
-  teeText: {
-    ...createFontStyle(FONTS.body5),
-    fontWeight: '500',
-  },
-  holeSelectionContainer: {
-    marginBottom: SIZES.padding,
-  },
-  holeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: SIZES.base,
-  },
-  holeOption: {
-    paddingHorizontal: SIZES.padding / 2,
-    paddingVertical: SIZES.base,
-    borderRadius: SIZES.radius / 2,
-    marginRight: SIZES.base,
-    marginBottom: SIZES.base,
-  },
-  holeOptionText: {
-    ...createFontStyle(FONTS.body4),
-    fontWeight: '500',
-  },
-  customHoleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SIZES.base,
-  },
-  customHoleLabel: {
-    ...createFontStyle(FONTS.body4),
-    marginRight: SIZES.base,
-  },
-  customHoleInput: {
-    width: 60,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: SIZES.radius / 2,
-    paddingHorizontal: SIZES.base,
-    textAlign: 'center',
-    ...createFontStyle(FONTS.body4),
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SIZES.padding,
-  },
-  backButton: {
-    width: '48%',
-  },
-  summaryCard: {
-    marginBottom: SIZES.padding,
-  },
-  summaryTitle: {
-    ...createFontStyle(FONTS.h3),
-    marginBottom: SIZES.base * 1.5,
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    marginBottom: SIZES.base,
-  },
-  summaryLabel: {
-    ...createFontStyle(FONTS.body4),
-    width: 80,
-  },
-  summaryValue: {
-    ...createFontStyle(FONTS.body4),
-    flex: 1,
-    fontWeight: '500',
-  },
-  gameGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  gameCard: {
-    width: '48%',
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding / 1.5,
-    marginBottom: SIZES.base * 2,
-    alignItems: 'center',
-  },
-  gameIcon: {
-    marginBottom: SIZES.base,
-  },
-  gameName: {
-    ...createFontStyle(FONTS.h4),
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  gameDescription: {
-    ...createFontStyle(FONTS.body5),
-    textAlign: 'center',
-  },
   stepIndicator: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: SIZES.padding,
-    paddingHorizontal: SIZES.padding * 2,
+    justifyContent: 'center',
+    marginBottom: SIZES.padding * 2,
+    padding: SIZES.padding,
     borderRadius: SIZES.radius,
-    marginBottom: SIZES.padding,
   },
   stepDot: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
   },
   stepLine: {
@@ -711,7 +453,6 @@ const styles = StyleSheet.create({
   },
   stepNumber: {
     ...createFontStyle(FONTS.body4),
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: '600',
   },
 }); 
