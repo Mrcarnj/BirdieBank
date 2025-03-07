@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Slot, Stack } from 'expo-router';
 import { Provider } from 'react-redux';
 import { store } from '../store';
 import { supabase } from '../lib/supabase';
@@ -10,7 +10,7 @@ import 'react-native-url-polyfill/auto';
 
 type CourseRouteParams = {
   id: string;
-  source:'home';
+  source: 'home';
 }
 
 // Inner layout component that has access to theme
@@ -20,26 +20,8 @@ function AppLayout() {
   return (
     <>
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.primary} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          headerStyle: {
-            backgroundColor: colors.primary,
-          },
-          headerTintColor: colors.textLight,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-          contentStyle: {
-            backgroundColor: colors.background,
-          },
-        }}
-      >
-        <Stack.Screen 
-            name="(tabs)" 
-            options={{ headerShown: false }} 
-          />
-      </Stack>
+      {/* Use Slot component to ensure proper navigation */}
+      <Slot />
     </>
   );
 }

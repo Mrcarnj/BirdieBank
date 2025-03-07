@@ -15,27 +15,17 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
+<Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        headerShown: true,
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
-          height: 60,
-          paddingBottom: 10,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
-        headerStyle: {
-          backgroundColor: colors.primary,
-        },
-        headerTintColor: colors.textLight,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        // Disable animations for smoother transitions
+        animation: 'none',
       }}
     >
       <Tabs.Screen
@@ -47,15 +37,15 @@ export default function TabLayout() {
           ),
         }}
       />
-        <Tabs.Screen
-          name="new-round"
-          options={{
-            title: 'New Round',
-            tabBarIcon: ({ color, size }) => (
-              <FontAwesome5 name="plus-circle" size={size} color={color} />
-            ),
-          }}
-        />
+      <Tabs.Screen
+        name="new-round"
+        options={{
+          title: 'New Round',
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome5 name="golf-ball" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{
@@ -67,4 +57,4 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-} 
+}

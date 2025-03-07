@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// This is a complete rewrite of the RoundScreen component that fixes hook ordering issues
+// and navigation problems
+
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -29,6 +32,7 @@ import { useTheme } from '../../components/ThemeProvider';
 import { getCourseHandicaps } from '../../utils/handicapUtils';
 
 export default function RoundScreen() {
+  // Hooks must be called unconditionally at the top level
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -36,17 +40,26 @@ export default function RoundScreen() {
   const { selectedGames } = useSelector((state: RootState) => state.game);
   const { colors } = useTheme();
   
+  // Define all state variables unconditionally
   const [currentHole, setCurrentHole] = useState(1);
   const [holeRange, setHoleRange] = useState<number[]>([]);
   const [showEndRoundConfirm, setShowEndRoundConfirm] = useState(false);
   const [roundSaved, setRoundSaved] = useState(false);
-
+  const [roundCompleted, setRoundCompleted] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigationAttempted = useRef(false);
+  
+  // Initialize the app
   useEffect(() => {
-    if (!currentRound) {
-      router.replace('/(tabs)');
-      return;
+    if (!currentRound && !isLoading) {
+      console.log("No current round and not loading");
     }
+  }, [currentRound, isLoading]);
 
+  // Setup hole range when currentRound changes
+  useEffect(() => {
+    if (!currentRound) return;
+    
     // Determine hole range based on selection
     let holes: number[] = [];
     switch (currentRound.holeSelection) {
@@ -74,7 +87,12 @@ export default function RoundScreen() {
     if (!currentHole || !holes.includes(currentHole)) {
       setCurrentHole(holes[0]);
     }
+  }, [currentRound, currentHole]);
 
+  // Save round if needed
+  useEffect(() => {
+    if (!currentRound || !user) return;
+    
     // Save the round to the database if it hasn't been saved yet
     if (currentRound.id.startsWith('temp-') && !roundSaved) {
       dispatch(saveRound(currentRound))
@@ -88,41 +106,103 @@ export default function RoundScreen() {
           Alert.alert('Error', 'Failed to save round. Please try again.');
         });
     }
-  }, [currentRound, router, dispatch, roundSaved]);
+  }, [currentRound, user, dispatch, roundSaved]);
 
-  // Periodically update the round in the database
-  useEffect(() => {
-    if (!currentRound || !roundSaved || currentRound.id.startsWith('temp-')) {
-      return;
-    }
+  // Safe navigation function 
+  const safeNavigateHome = useCallback(() => {
+    // Prevent multiple navigation attempts
+    if (navigationAttempted.current) return;
+    navigationAttempted.current = true;
+    
+    console.log("Attempting to navigate home...");
+    setIsNavigating(true);
+    
+    // Use setTimeout to delay navigation
+    setTimeout(() => {
+      try {
+        // Use a direct approach - navigate to tabs index
+        router.push("/(tabs)");
+      } catch (error) {
+        console.error("Navigation error:", error);
+        
+        // Try alternate navigation after a delay
+        setTimeout(() => {
+          try {
+            router.replace("/");
+          } catch (err) {
+            console.error("Final navigation attempt failed:", err);
+            Alert.alert(
+              "Navigation Error",
+              "Unable to return to home screen. Please restart the app."
+            );
+          }
+        }, 500);
+      }
+    }, 500);
+  }, [router]);
 
-    const updateInterval = setInterval(() => {
-      dispatch(updateRound(currentRound))
-        .unwrap()
-        .then(() => {
-          console.log('Round updated successfully');
-        })
-        .catch(error => {
-          console.error('Failed to update round:', error);
-        });
-    }, 60000); // Update every minute
-
-    return () => clearInterval(updateInterval);
-  }, [currentRound, dispatch, roundSaved]);
-
-  const handleScoreChange = (score: HoleScore) => {
+  // Complete current round with simplified logic
+  const completeCurrentRound = useCallback(() => {
+    if (!currentRound || !user) return;
+    console.log("Completing round...");
+    
+    // First ensure round is saved
+    const savePromise = currentRound.id.startsWith('temp-')
+      ? dispatch(saveRound(currentRound)).unwrap()
+      : Promise.resolve(currentRound);
+    
+    savePromise
+      .then(savedRound => {
+        // Update game results if needed
+        if (selectedGames.length > 0) {
+          dispatch(updateGameResults({
+            scores: currentRound.scores,
+            roundId: savedRound.id
+          }));
+        }
+        
+        // Complete the round
+        return dispatch(completeRound(savedRound.id)).unwrap();
+      })
+      .then(() => {
+        console.log("Round completed successfully");
+        // Show success message before navigating
+        Alert.alert(
+          "Round Completed",
+          "Your round has been completed successfully.",
+          [{ 
+            text: "OK", 
+            onPress: () => {
+              setRoundCompleted(true);
+              setShowEndRoundConfirm(false);
+              safeNavigateHome();
+            }
+          }],
+          { cancelable: false }
+        );
+      })
+      .catch(error => {
+        console.error('Failed to complete round:', error);
+        Alert.alert('Error', 'Failed to complete the round. Please try again.');
+      });
+  }, [currentRound, user, dispatch, selectedGames, safeNavigateHome]);
+  
+  // Handle score changes
+  const handleScoreChange = useCallback((score: HoleScore) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     dispatch(addScore(score));
-  };
+  }, [dispatch]);
 
-  const handlePreviousHole = () => {
+  // Handle navigation to previous hole
+  const handlePreviousHole = useCallback(() => {
     const currentIndex = holeRange.indexOf(currentHole);
     if (currentIndex > 0) {
       setCurrentHole(holeRange[currentIndex - 1]);
     }
-  };
+  }, [currentHole, holeRange]);
 
-  const handleNextHole = () => {
+  // Handle navigation to next hole
+  const handleNextHole = useCallback(() => {
     const currentIndex = holeRange.indexOf(currentHole);
     if (currentIndex < holeRange.length - 1) {
       setCurrentHole(holeRange[currentIndex + 1]);
@@ -130,9 +210,10 @@ export default function RoundScreen() {
       // Last hole reached
       setShowEndRoundConfirm(true);
     }
-  };
+  }, [currentHole, holeRange]);
 
-  const handleEndRound = () => {
+  // Handle end round button press
+  const handleEndRound = useCallback(() => {
     if (!currentRound) return;
     
     // Check if all scores are entered
@@ -147,115 +228,27 @@ export default function RoundScreen() {
         `You've only entered ${scoresEntered} out of ${totalScoresNeeded} scores. Are you sure you want to end the round?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'End Round', style: 'destructive', onPress: completeCurrentRound }
+          { 
+            text: 'End Round', 
+            style: 'destructive', 
+            onPress: completeCurrentRound 
+          }
         ]
       );
     } else {
       completeCurrentRound();
     }
-  };
+  }, [currentRound, holeRange, completeCurrentRound]);
 
-  const completeCurrentRound = () => {
-    if (!currentRound || !user) return;
-    
-    // Make sure the round is saved first
-    if (currentRound.id.startsWith('temp-')) {
-      dispatch(saveRound(currentRound))
-        .unwrap()
-        .then(savedRound => {
-          // Update game results if any
-          if (selectedGames.length > 0) {
-            updateGameResultsAndComplete(savedRound.id);
-          } else {
-            // Complete the round
-            dispatch(completeRound(savedRound.id))
-              .unwrap()
-              .then(() => {
-                // Add a slight delay before navigation to ensure components are mounted
-                setTimeout(() => {
-                  // Navigate to round summary
-                  router.replace(`/rounds/${savedRound.id}`);
-                }, 300);
-              })
-              .catch(error => {
-                console.error('Failed to complete round:', error);
-                Alert.alert('Error', 'Failed to complete round. Please try again.');
-              });
-          }
-        })
-        .catch(error => {
-          console.error('Failed to save round:', error);
-          Alert.alert('Error', 'Failed to save round. Please try again.');
-        });
-    } else {
-      // Round is already saved, just update game results and complete
-      if (selectedGames.length > 0) {
-        updateGameResultsAndComplete(currentRound.id);
-      } else {
-        // Complete the round
-        dispatch(completeRound(currentRound.id))
-          .unwrap()
-          .then(() => {
-            // Add a slight delay before navigation to ensure components are mounted
-            setTimeout(() => {
-              // Navigate to round summary
-              router.replace(`/rounds/${currentRound.id}`);
-            }, 300);
-          })
-          .catch(error => {
-            console.error('Failed to complete round:', error);
-            Alert.alert('Error', 'Failed to complete round. Please try again.');
-          });
-      }
-    }
-  };
-
-  const updateGameResultsAndComplete = (roundId: string) => {
-    // This is a simplified implementation
-    // In a real app, you would calculate game results based on scores
-    
-    // Update game results with the current scores
-    if (currentRound && currentRound.scores.length > 0) {
-      dispatch(updateGameResults({
-        scores: currentRound.scores,
-        roundId: roundId
-      }));
-    }
-    
-    // Complete the round
-    dispatch(completeRound(roundId))
-      .unwrap()
-      .then(() => {
-        // Add a slight delay before navigation to ensure components are mounted
-        setTimeout(() => {
-          // Navigate to round summary
-          router.replace(`/rounds/${roundId}`);
-        }, 300);
-      })
-      .catch(error => {
-        console.error('Failed to complete round:', error);
-        Alert.alert('Error', 'Failed to complete round. Please try again.');
-      });
-  };
-
-  if (!currentRound) {
-    return (
-      <View style={{ ...styles.container, backgroundColor: colors.background }}>
-        <Text style={{ ...styles.noRoundText, color: colors.textPrimary }}>No active round found</Text>
-        <Button
-          title="Start New Round"
-          onPress={() => router.replace('/(tabs)/new-round')}
-          style={styles.startButton}
-        />
-      </View>
+  // Get current hole data
+  const currentHoleData = useMemo(() => {
+    if (!currentRound?.course?.holes) return null;
+    return currentRound.course.holes.find(
+      hole => hole.number === currentHole
     );
-  }
+  }, [currentRound, currentHole]);
 
-  const currentHoleData = currentRound.course?.holes.find(
-    hole => hole.number === currentHole
-  );
-
-  // Get unique tees being played and their yardages for the current hole
+  // Get tee yardages for current hole
   const teeYardages = useMemo(() => {
     if (!currentRound?.course?.holes || !currentHoleData) return [];
     
@@ -275,9 +268,9 @@ export default function RoundScreen() {
     
     // Sort by yardage (longest first)
     return yardages.sort((a, b) => b.yardage - a.yardage);
-  }, [currentRound, currentHoleData, currentHole]);
+  }, [currentRound, currentHoleData]);
 
-  // Calculate course handicaps if they don't exist
+  // Calculate course handicaps
   const courseHandicaps = useMemo(() => {
     if (currentRound?.courseHandicaps) {
       return currentRound.courseHandicaps;
@@ -290,16 +283,40 @@ export default function RoundScreen() {
     return {};
   }, [currentRound]);
 
+  // Show loading screen if navigating away
+  if (isNavigating || roundCompleted) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={[styles.noRoundText, { color: colors.textPrimary }]}>Returning to home screen...</Text>
+      </View>
+    );
+  }
+
+  // If no current round, show a message
+  if (!currentRound) {
+    return (
+      <View style={{ ...styles.container, backgroundColor: colors.background }}>
+        <Text style={{ ...styles.noRoundText, color: colors.textPrimary }}>No active round found</Text>
+        <Button
+          title="Start New Round"
+          onPress={() => router.navigate('/(tabs)/new-round')}
+          style={styles.startButton}
+        />
+      </View>
+    );
+  }
+
+  // Main render of the round screen
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView style={{ ...styles.container, backgroundColor: colors.background }}>
         <Card style={{ ...styles.holeCard, backgroundColor: colors.card, marginTop: 0 }}>
           <View style={styles.holeHeader}>
             <View>
-              <Text style={{ ...styles.holeTitle, color: colors.textPrimary }}>Hole {currentHole}</Text>
+              <Text style={[styles.holeTitle, { color: colors.textPrimary }]}>Hole {currentHole}</Text>
               <View style={styles.holeDetails}>
-                <Text style={{ ...styles.holePar, color: colors.textSecondary }}>Par {currentHoleData?.par || '-'}</Text>
-                <Text style={{ ...styles.holeHandicap, color: colors.textSecondary }}>HCP {currentHoleData?.handicap || '-'}</Text>
+                <Text style={[styles.holePar, { color: colors.textSecondary }]}>Par {currentHoleData?.par || '-'}</Text>
+                <Text style={[styles.holeHandicap, { color: colors.textSecondary }]}>HCP {currentHoleData?.handicap || '-'}</Text>
               </View>
             </View>
             
@@ -313,7 +330,7 @@ export default function RoundScreen() {
                       { backgroundColor: tee.color || colors.primary }
                     ]} 
                   />
-                  <Text style={{ ...styles.teeYardageText, color: colors.textSecondary }}>
+                  <Text style={[styles.teeYardageText, { color: colors.textSecondary }]}>
                     {yardage} yards
                   </Text>
                 </View>
@@ -323,42 +340,44 @@ export default function RoundScreen() {
           
           <View style={styles.holeNavigation}>
             <TouchableOpacity
-              style={{
-                ...styles.navButton,
-                ...(holeRange.indexOf(currentHole) === 0 ? styles.disabledNavButton : {}),
-                backgroundColor: colors.secondaryLight
-              }}
+              style={[
+                styles.navButton,
+                holeRange.indexOf(currentHole) === 0 ? styles.disabledNavButton : {},
+                { backgroundColor: colors.secondaryLight }
+              ]}
               onPress={handlePreviousHole}
               disabled={holeRange.indexOf(currentHole) === 0}
             >
               <FontAwesome5 name="chevron-left" size={16} color={colors.textPrimary} />
-              <Text style={{ ...styles.navButtonText, color: colors.textPrimary }}>Previous</Text>
+              <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>Previous</Text>
             </TouchableOpacity>
             
             <View style={styles.holeIndicator}>
               {holeRange.map(hole => (
                 <TouchableOpacity
                   key={hole}
-                  style={{
-                    ...styles.holeDot,
-                    ...(hole === currentHole ? styles.currentHoleDot : {}),
-                    backgroundColor: hole === currentHole ? colors.primary : colors.secondaryLight,
-                    borderColor: colors.border
-                  }}
+                  style={[
+                    styles.holeDot,
+                    hole === currentHole ? styles.currentHoleDot : {},
+                    { 
+                      backgroundColor: hole === currentHole ? colors.primary : colors.secondaryLight,
+                      borderColor: colors.border
+                    }
+                  ]}
                   onPress={() => setCurrentHole(hole)}
                 />
               ))}
             </View>
             
             <TouchableOpacity
-              style={{
-                ...styles.navButton,
-                ...(holeRange.indexOf(currentHole) === holeRange.length - 1 ? styles.lastHoleNavButton : {}),
-                backgroundColor: colors.secondaryLight
-              }}
+              style={[
+                styles.navButton,
+                holeRange.indexOf(currentHole) === holeRange.length - 1 ? styles.lastHoleNavButton : {},
+                { backgroundColor: colors.secondaryLight }
+              ]}
               onPress={handleNextHole}
             >
-              <Text style={{ ...styles.navButtonText, color: colors.textPrimary }}>
+              <Text style={[styles.navButtonText, { color: colors.textPrimary }]}>
                 {holeRange.indexOf(currentHole) === holeRange.length - 1 ? 'Finish' : 'Next'}
               </Text>
               <FontAwesome5 
@@ -372,9 +391,9 @@ export default function RoundScreen() {
         
         <View style={styles.scorecardContainer}>
           <Scorecard
-            course={currentRound.course!}
-            players={currentRound.players}
-            scores={currentRound.scores}
+            course={currentRound!.course!}
+            players={currentRound!.players}
+            scores={currentRound!.scores}
             holeRange={[currentHole]} // Just show the current hole
             editable={true}
             onScoreChange={handleScoreChange}
@@ -393,10 +412,9 @@ export default function RoundScreen() {
           <Button
             title="View Scorecard"
             onPress={() => {
-              // Navigate to full scorecard view
               router.push({
-                pathname: `/rounds/${currentRound.id}/scorecard`,
-                params: { roundId: currentRound.id }
+                pathname: `/rounds/${currentRound!.id}/scorecard`,
+                params: { roundId: currentRound!.id }
               } as any);
             }}
           />
@@ -410,8 +428,8 @@ export default function RoundScreen() {
         >
           <View style={styles.modalOverlay}>
             <Card style={{ ...styles.confirmModal, backgroundColor: colors.card }}>
-              <Text style={{ ...styles.confirmTitle, color: colors.textPrimary }}>End Round?</Text>
-              <Text style={{ ...styles.confirmText, color: colors.textSecondary }}>
+              <Text style={[styles.confirmTitle, { color: colors.textPrimary }]}>End Round?</Text>
+              <Text style={[styles.confirmText, { color: colors.textSecondary }]}>
                 Are you sure you want to end this round? This action cannot be undone.
               </Text>
               
@@ -574,4 +592,4 @@ const styles = StyleSheet.create({
   scorecardContainer: {
     width: '100%',
   } as ViewStyle,
-}); 
+});

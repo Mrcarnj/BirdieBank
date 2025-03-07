@@ -92,6 +92,12 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
   }, [visible, user]);
 
   const handleSelectFriend = (player: Player) => {
+    // Prevent adding the current user
+    if (user && player.id === user.id) {
+      Alert.alert('Invalid Selection', 'You cannot add yourself to the round as you are already included.');
+      return;
+    }
+    
     // Check if the player is already selected
     if (selectedPlayers.some(p => p.id === player.id)) {
       Alert.alert('Already Added', 'This player is already added to the round.');
@@ -248,14 +254,16 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                       showsVerticalScrollIndicator={true}
                     >
                       {players
+                        .filter(player => {
+                          // Explicitly filter out the current user by checking both id and userId
+                          const isCurrentUser = user && (player.id === user.id || player.userId === user.id);
+                          if (isCurrentUser) {
+                            console.log('Filtering out current user:', player.name, 'with id:', player.id, 'and userId:', player.userId);
+                          }
+                          return !isCurrentUser;
+                        })
                         .map(player => {
                           console.log('Rendering player in list:', player);
-                          
-                          // Skip the current user
-                          if (user && player.id === user.id) {
-                            console.log('Skipping current user:', player.id);
-                            return null;
-                          }
                           
                           const isAlreadySelected = selectedPlayers.some(p => p.id === player.id);
                           console.log(`Player ${player.name} isAlreadySelected:`, isAlreadySelected);
@@ -301,12 +309,6 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                               )}
                             </TouchableOpacity>
                           );
-                        })
-                        // Add a debug log after filtering
-                        .filter(Boolean) // Filter out null values (the current user)
-                        .map((component, index) => {
-                          console.log(`Rendering component ${index}`);
-                          return component;
                         })
                       }
                     </ScrollView>
