@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
@@ -287,131 +288,133 @@ export default function NewRoundScreen() {
   };
 
   return (
-    <ScrollView 
-      ref={scrollViewRef}
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={[styles.stepIndicator, { backgroundColor: colors.card, ...shadows.light }]}>
-        <View
-          style={[
-            styles.stepDot,
-            { 
-              backgroundColor: step >= 1 ? colors.primary : colors.secondaryLight,
-              borderColor: colors.border
-            }
-          ]}
-        >
-          <Text style={[styles.stepNumber, { color: step >= 1 ? colors.textLight : colors.textPrimary }]}>1</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.contentContainer]}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={[styles.stepIndicator, { backgroundColor: colors.card, ...shadows.light }]}>
+          <View
+            style={[
+              styles.stepDot,
+              { 
+                backgroundColor: step >= 1 ? colors.primary : colors.secondaryLight,
+                borderColor: colors.border
+              }
+            ]}
+          >
+            <Text style={[styles.stepNumber, { color: step >= 1 ? colors.textLight : colors.textPrimary }]}>1</Text>
+          </View>
+          <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
+          <View
+            style={[
+              styles.stepDot,
+              { 
+                backgroundColor: step >= 2 ? colors.primary : colors.secondaryLight,
+                borderColor: colors.border
+              }
+            ]}
+          >
+            <Text style={[styles.stepNumber, { color: step >= 2 ? colors.textLight : colors.textPrimary }]}>2</Text>
+          </View>
+          <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
+          <View
+            style={[
+              styles.stepDot,
+              { 
+                backgroundColor: step >= 3 ? colors.primary : colors.secondaryLight,
+                borderColor: colors.border
+              }
+            ]}
+          >
+            <Text style={[styles.stepNumber, { color: step >= 3 ? colors.textLight : colors.textPrimary }]}>3</Text>
+          </View>
         </View>
-        <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
-        <View
-          style={[
-            styles.stepDot,
-            { 
-              backgroundColor: step >= 2 ? colors.primary : colors.secondaryLight,
-              borderColor: colors.border
-            }
-          ]}
-        >
-          <Text style={[styles.stepNumber, { color: step >= 2 ? colors.textLight : colors.textPrimary }]}>2</Text>
-        </View>
-        <View style={[styles.stepLine, { backgroundColor: colors.border }]} />
-        <View
-          style={[
-            styles.stepDot,
-            { 
-              backgroundColor: step >= 3 ? colors.primary : colors.secondaryLight,
-              borderColor: colors.border
-            }
-          ]}
-        >
-          <Text style={[styles.stepNumber, { color: step >= 3 ? colors.textLight : colors.textPrimary }]}>3</Text>
-        </View>
-      </View>
 
-      {/* Step 1: Course Selection */}
-      {step === 1 && (
-        <CourseSelection onCourseSelect={handleCourseSelect} />
-      )}
+        {/* Step 1: Course Selection */}
+        {step === 1 && (
+          <CourseSelection onCourseSelect={handleCourseSelect} />
+        )}
 
-      {/* Step 2: Player Selection */}
-      {step === 2 && (
-        <PlayerSelection
-          selectedCourse={selectedCourse}
-          selectedPlayers={selectedPlayers}
-          holeSelection={holeSelection}
-          startingHole={startingHole}
-          onBack={() => goToStep(1)}
-          onNext={() => goToStep(3)}
-          onAddPlayer={handleAddPlayer}
-          onOpenTeeSelection={openTeeSelection}
+        {/* Step 2: Player Selection */}
+        {step === 2 && (
+          <PlayerSelection
+            selectedCourse={selectedCourse}
+            selectedPlayers={selectedPlayers}
+            holeSelection={holeSelection}
+            startingHole={startingHole}
+            onBack={() => goToStep(1)}
+            onNext={() => goToStep(3)}
+            onAddPlayer={handleAddPlayer}
+            onOpenTeeSelection={openTeeSelection}
+          />
+        )}
+
+        {/* Step 3: Game Selection */}
+        {step === 3 && (
+          <GameSelection
+            selectedCourse={selectedCourse}
+            selectedPlayers={selectedPlayers}
+            holeSelection={holeSelection}
+            startingHole={startingHole}
+            onBack={() => goToStep(2)}
+            onStartRound={handleStartRound}
+            onGameSelect={handleGameSelect}
+          />
+        )}
+
+        {/* Game Configuration Modal */}
+        <GameConfigModal
+          visible={showGameConfigModal}
+          onClose={() => setShowGameConfigModal(false)}
+          onSave={handleSaveGameConfig}
+          gameToConfig={gameToConfig}
+          players={selectedPlayers}
         />
-      )}
 
-      {/* Step 3: Game Selection */}
-      {step === 3 && (
-        <GameSelection
-          selectedCourse={selectedCourse}
-          selectedPlayers={selectedPlayers}
-          holeSelection={holeSelection}
-          startingHole={startingHole}
-          onBack={() => goToStep(2)}
-          onStartRound={handleStartRound}
-          onGameSelect={handleGameSelect}
-        />
-      )}
-
-      {/* Game Configuration Modal */}
-      <GameConfigModal
-        visible={showGameConfigModal}
-        onClose={() => setShowGameConfigModal(false)}
-        onSave={handleSaveGameConfig}
-        gameToConfig={gameToConfig}
-        players={selectedPlayers}
-      />
-
-      {/* Tee Selection Modal */}
-      {selectedCourse && selectedPlayerForTee && (
-        <TeeSelectionModal
-          visible={showTeeModal}
-          onClose={() => {
-            setShowTeeModal(false);
-            setSelectedPlayerForTee(null);
+        {/* Tee Selection Modal */}
+        {selectedCourse && selectedPlayerForTee && (
+          <TeeSelectionModal
+            visible={showTeeModal}
+            onClose={() => {
+              setShowTeeModal(false);
+              setSelectedPlayerForTee(null);
+            }}
+            player={selectedPlayerForTee}
+            course={selectedCourse}
+            onSelectTee={handleTeeSelect}
+          />
+        )}
+        
+        {/* Add Player Modal */}
+        <AddPlayerModal
+          visible={showAddPlayerModal}
+          onClose={() => setShowAddPlayerModal(false)}
+          activeTab={addPlayerTab}
+          onTabChange={setAddPlayerTab}
+          onSelectFriend={(player) => {
+            setShowAddPlayerModal(false);
+            setTimeout(() => openTeeSelection(player), 100);
           }}
-          player={selectedPlayerForTee}
-          course={selectedCourse}
-          onSelectTee={handleTeeSelect}
+          onCreatePlayer={(player) => {
+            setShowAddPlayerModal(false);
+            setTimeout(() => openTeeSelection(player), 100);
+          }}
+          firstName={newPlayerFirstName}
+          lastName={newPlayerLastName}
+          handicap={newPlayerHandicap}
+          email={newPlayerEmail}
+          isPlusHandicap={isPlusHandicap}
+          setFirstName={setNewPlayerFirstName}
+          setLastName={setNewPlayerLastName}
+          setHandicap={setNewPlayerHandicap}
+          setEmail={setNewPlayerEmail}
+          setIsPlusHandicap={setIsPlusHandicap}
         />
-      )}
-      
-      {/* Add Player Modal */}
-      <AddPlayerModal
-        visible={showAddPlayerModal}
-        onClose={() => setShowAddPlayerModal(false)}
-        activeTab={addPlayerTab}
-        onTabChange={setAddPlayerTab}
-        onSelectFriend={(player) => {
-          setShowAddPlayerModal(false);
-          setTimeout(() => openTeeSelection(player), 100);
-        }}
-        onCreatePlayer={(player) => {
-          setShowAddPlayerModal(false);
-          setTimeout(() => openTeeSelection(player), 100);
-        }}
-        firstName={newPlayerFirstName}
-        lastName={newPlayerLastName}
-        handicap={newPlayerHandicap}
-        email={newPlayerEmail}
-        isPlusHandicap={isPlusHandicap}
-        setFirstName={setNewPlayerFirstName}
-        setLastName={setNewPlayerLastName}
-        setHandicap={setNewPlayerHandicap}
-        setEmail={setNewPlayerEmail}
-        setIsPlusHandicap={setIsPlusHandicap}
-      />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -421,7 +424,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: SIZES.padding,
-    paddingTop: SIZES.padding * 2,
+    paddingTop: SIZES.padding / 2,
+    paddingBottom: SIZES.padding * 2,
   },
   stepContainer: {
     flex: 1,
@@ -429,6 +433,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     ...createFontStyle(FONTS.h2),
     marginBottom: SIZES.padding,
+    marginTop: SIZES.padding,
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -437,6 +442,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.padding * 2,
     padding: SIZES.padding,
     borderRadius: SIZES.radius,
+    marginTop: 0,
   },
   stepDot: {
     width: 30,

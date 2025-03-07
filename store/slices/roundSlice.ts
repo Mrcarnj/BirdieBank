@@ -170,6 +170,8 @@ export const saveRound = createAsyncThunk(
       // First, ensure the current user exists in the friends table
       console.log('Ensuring user exists in friends table before saving round:', round.userId);
       const userFriendId = await dispatch(ensureUserInFriendsTable(round.userId)).unwrap();
+      console.log('User friend ID:', userFriendId);
+      console.log('Original round players:', round.players);
       
       // Map player IDs to ensure the current user's ID is replaced with their friend_id
       const mappedPlayers = round.players.map(player => {
@@ -182,6 +184,8 @@ export const saveRound = createAsyncThunk(
         }
         return player;
       });
+      
+      console.log('Mapped players:', mappedPlayers);
       
       return await SupabaseTransaction.execute(async () => {
         // 1. Insert the round
@@ -205,6 +209,8 @@ export const saveRound = createAsyncThunk(
         
         if (roundError) throw roundError;
         
+        console.log('Inserted round:', roundData);
+        
         // 2. Insert round players with mapped player IDs
         for (const player of mappedPlayers) {
           console.log('Inserting round player:', player.id, player.name);
@@ -224,9 +230,14 @@ export const saveRound = createAsyncThunk(
             throw playerError;
           }
           
+          console.log('Inserted round player:', roundPlayerData);
+          
           // 3. Insert scores for this player - map the playerId if it's the current user
+          // Determine the correct playerId to filter scores
+          const scorePlayerId = player.id === userFriendId ? round.userId : player.id;
+          
           const playerScores = round.scores
-            .filter(score => score.playerId === (player.id === userFriendId ? round.userId : player.id))
+            .filter(score => score.playerId === scorePlayerId)
             .map(score => ({
               ...score,
               playerId: player.id // Use the mapped player ID
@@ -282,13 +293,18 @@ export const saveRound = createAsyncThunk(
 
 export const updateRound = createAsyncThunk(
   'round/updateRound',
-  async (round: Round, { rejectWithValue }) => {
+  async (round: Round, { rejectWithValue, dispatch }) => {
     try {
+      // First, ensure the current user exists in the friends table
+      console.log('Ensuring user exists in friends table before updating round:', round.userId);
+      const userFriendId = await dispatch(ensureUserInFriendsTable(round.userId)).unwrap();
+      
       return await SupabaseTransaction.execute(async () => {
         // 1. Update the round
         const { error: roundError } = await supabase
           .from('rounds')
           .update({
+            date: round.date,
             hole_selection: round.holeSelection,
             custom_start_hole: round.customStartHole,
             custom_end_hole: round.customEndHole,
@@ -306,17 +322,20 @@ export const updateRound = createAsyncThunk(
         // 2. Get existing round players
         const { data: existingPlayers, error: playersQueryError } = await supabase
           .from('round_players')
-          .select('*')
+          .select('id, friend_id')
           .eq('round_id', round.id);
         
         if (playersQueryError) throw playersQueryError;
         
-        // Map of existing player IDs to round_player IDs
-        const playerMap = new Map(existingPlayers.map(p => [p.friend_id, p.id]));
+        // Create a map of friend_id to round_player_id
+        const playerMap = new Map(existingPlayers.map((p: any) => [p.friend_id, p.id]));
         
         // 3. Update scores for each player
         for (const player of round.players) {
-          const roundPlayerId = playerMap.get(player.id);
+          // Map the player ID if it's the current user
+          const mappedPlayerId = player.id === round.userId ? userFriendId : player.id;
+          
+          const roundPlayerId = playerMap.get(mappedPlayerId);
           
           if (!roundPlayerId) {
             // This is a new player, insert them
@@ -324,7 +343,7 @@ export const updateRound = createAsyncThunk(
               .from('round_players')
               .insert({
                 round_id: round.id,
-                friend_id: player.id,
+                friend_id: mappedPlayerId,
                 tee_set_id: player.selectedTee?.id,
                 handicap_at_time: player.handicapIndex
               })
@@ -334,7 +353,7 @@ export const updateRound = createAsyncThunk(
             if (newPlayerError) throw newPlayerError;
             
             // Add to our map
-            playerMap.set(player.id, newPlayer.id);
+            playerMap.set(mappedPlayerId, newPlayer.id);
           } else {
             // Update existing player
             const { error: updatePlayerError } = await supabase
@@ -348,11 +367,14 @@ export const updateRound = createAsyncThunk(
             if (updatePlayerError) throw updatePlayerError;
           }
           
+          // Determine the correct playerId to filter scores
+          const scorePlayerId = player.id === userFriendId ? round.userId : player.id;
+          
           // Get scores for this player
-          const playerScores = round.scores.filter(score => score.playerId === player.id);
+          const playerScores = round.scores.filter(score => score.playerId === scorePlayerId);
           
           if (playerScores.length > 0) {
-            const roundPlayerId = playerMap.get(player.id);
+            const roundPlayerId = playerMap.get(mappedPlayerId);
             
             // Get existing scores
             const { data: existingScores, error: scoresQueryError } = await supabase
@@ -415,21 +437,51 @@ export const updateRound = createAsyncThunk(
 
 export const completeRound = createAsyncThunk(
   'round/completeRound',
-  async (roundId: string, { getState, rejectWithValue }) => {
+  async (roundId: string, { getState, rejectWithValue, dispatch }) => {
     try {
-      const state = getState() as { round: RoundState };
+      const state = getState() as { round: RoundState; auth: { user: any } };
       const round = state.round.currentRound;
+      const currentUser = state.auth.user;
       
       if (!round) throw new Error('No current round found');
+      if (!currentUser) throw new Error('No current user found');
+      
+      // First, ensure the current user exists in the friends table to get their friend_id
+      console.log('Ensuring user exists in friends table before completing round:', round.userId);
+      const userFriendId = await dispatch(ensureUserInFriendsTable(round.userId)).unwrap();
+      console.log('User friend ID:', userFriendId);
       
       // Calculate total scores for each player
       const playerTotals = round.players.map(player => {
-        const playerScores = round.scores.filter(score => score.playerId === player.id);
+        // Determine the correct playerId to filter scores
+        // If this is the current user's player entry, we need to check scores with the user's ID
+        const scorePlayerId = player.id === userFriendId ? round.userId : player.id;
+        
+        // Get scores for this player
+        const playerScores = round.scores.filter(score => score.playerId === scorePlayerId);
         const totalScore = playerScores.reduce((sum, score) => sum + score.strokes, 0);
+        
+        // Calculate course handicap using the formula: (Handicap Index × Slope Rating / 113) + (Course Rating - Par)
+        let courseHandicap = 0;
+        if (player.handicapIndex !== undefined && player.selectedTee) {
+          const slope = player.selectedTee.slope || 113;
+          const rating = player.selectedTee.rating || 72;
+          // Get par from course holes if available, otherwise default to 72
+          const par = round.course?.holes?.reduce((total, hole) => total + (hole.par || 4), 0) || 72;
+          
+          courseHandicap = Math.round((player.handicapIndex * slope / 113) + (rating - par));
+        }
+        
+        // Calculate net score as total score minus course handicap
+        const netScore = Math.max(0, totalScore - courseHandicap);
+        
+        console.log(`Player ${player.name} (ID: ${player.id}): Total Score = ${totalScore}, Course Handicap = ${courseHandicap}, Net Score = ${netScore}`);
         
         return {
           playerId: player.id,
-          totalScore
+          totalScore,
+          netScore,
+          courseHandicap
         };
       });
       
@@ -455,19 +507,110 @@ export const completeRound = createAsyncThunk(
         
         if (playersError) throw playersError;
         
+        console.log('Round players from database:', roundPlayers);
+        
+        // Check if we have any round players
+        if (roundPlayers.length === 0) {
+          console.error('No round players found for round ID:', roundId);
+          throw new Error('No round players found');
+        }
+        
         for (const roundPlayer of roundPlayers) {
+          console.log(`Processing round player: ${JSON.stringify(roundPlayer)}`);
           const playerTotal = playerTotals.find(p => p.playerId === roundPlayer.friend_id);
           
           if (playerTotal) {
+            console.log(`Found player total for ${roundPlayer.friend_id}: ${JSON.stringify(playerTotal)}`);
+            
+            // Always include both total_score and net_score in the update
+            const updateData = { 
+              total_score: playerTotal.totalScore,
+              net_score: playerTotal.netScore,
+              updated_at: new Date().toISOString()
+            };
+            
+            console.log(`Updating round player ${roundPlayer.id} with data: ${JSON.stringify(updateData)}`);
             const { error: updatePlayerError } = await supabase
               .from('round_players')
-              .update({ 
-                total_score: playerTotal.totalScore,
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', roundPlayer.id);
             
-            if (updatePlayerError) throw updatePlayerError;
+            if (updatePlayerError) {
+              console.error(`Error updating round player ${roundPlayer.id}:`, updatePlayerError);
+              throw updatePlayerError;
+            } else {
+              console.log(`Successfully updated round player ${roundPlayer.id}`);
+            }
+          } else {
+            console.log(`No player total found for round player ${roundPlayer.friend_id}`);
+            
+            // Special handling for the user's round player if no scores were found
+            if (roundPlayer.friend_id === userFriendId) {
+              console.log('This is the user round player, checking for scores with user ID...');
+              
+              // Get scores for the user using the user ID
+              const userScores = round.scores.filter(score => score.playerId === round.userId);
+              console.log(`Found ${userScores.length} scores for user with ID ${round.userId}`);
+              
+              if (userScores.length > 0) {
+                const userTotalScore = userScores.reduce((sum, score) => sum + score.strokes, 0);
+                
+                // Find the user's player entry to get the selected tee
+                const userPlayer = round.players.find(p => p.id === userFriendId || p.id === round.userId);
+                
+                // Calculate course handicap
+                let userCourseHandicap = 0;
+                if (userPlayer && userPlayer.handicapIndex !== undefined && userPlayer.selectedTee) {
+                  const slope = userPlayer.selectedTee.slope || 113;
+                  const rating = userPlayer.selectedTee.rating || 72;
+                  // Get par from course holes if available, otherwise default to 72
+                  const par = round.course?.holes?.reduce((total, hole) => total + (hole.par || 4), 0) || 72;
+                  
+                  userCourseHandicap = Math.round((userPlayer.handicapIndex * slope / 113) + (rating - par));
+                } else if (roundPlayer.handicap_at_time !== null) {
+                  // Fallback to using handicap_at_time if we can find the tee information
+                  const teeData = await supabase
+                    .from('tee_sets')
+                    .select('*')
+                    .eq('id', roundPlayer.tee_set_id)
+                    .single();
+                  
+                  if (!teeData.error && teeData.data) {
+                    const slope = teeData.data.slope_rating || 113;
+                    const rating = teeData.data.course_rating || 72;
+                    // Get par from course holes if available, otherwise default to 72
+                    const par = round.course?.holes?.reduce((total, hole) => total + (hole.par || 4), 0) || 72;
+                    
+                    userCourseHandicap = Math.round((roundPlayer.handicap_at_time * slope / 113) + (rating - par));
+                  }
+                }
+                
+                // Calculate net score
+                const userNetScore = Math.max(0, userTotalScore - userCourseHandicap);
+                
+                console.log(`User total score: ${userTotalScore}, Course Handicap: ${userCourseHandicap}, Net score: ${userNetScore}`);
+                
+                // Always include both total_score and net_score in the update
+                const updateData = { 
+                  total_score: userTotalScore,
+                  net_score: userNetScore,
+                  updated_at: new Date().toISOString()
+                };
+                
+                console.log(`Updating user round player ${roundPlayer.id} with data: ${JSON.stringify(updateData)}`);
+                const { error: updateUserError } = await supabase
+                  .from('round_players')
+                  .update(updateData)
+                  .eq('id', roundPlayer.id);
+                
+                if (updateUserError) {
+                  console.error(`Error updating user round player ${roundPlayer.id}:`, updateUserError);
+                  throw updateUserError;
+                } else {
+                  console.log(`Successfully updated user round player ${roundPlayer.id}`);
+                }
+              }
+            }
           }
         }
         

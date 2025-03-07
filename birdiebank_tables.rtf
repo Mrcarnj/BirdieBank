@@ -144,6 +144,7 @@ CREATE TABLE round_players (
   tee_set_id UUID REFERENCES tee_sets(id),
   handicap_at_time DECIMAL(4, 1),
   total_score INTEGER,
+  net_score INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (round_id, friend_id)

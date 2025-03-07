@@ -501,6 +501,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     ...createFontStyle(FONTS.h2),
     marginBottom: SIZES.padding,
+    marginTop: 0,
   },
   selectedCourseCard: {
     marginBottom: SIZES.padding,
@@ -669,6 +670,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: SIZES.padding,
+    marginBottom: SIZES.padding,
   },
   backButton: {
     width: '48%',
