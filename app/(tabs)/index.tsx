@@ -55,7 +55,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={[styles.quickActionItem, { backgroundColor: colors.card, ...shadows.medium }]}
-          onPress={() => router.push('/courses/index')}
+          onPress={() => router.push('/courses')}
         >
           <View style={[styles.quickActionIconContainer, { backgroundColor: colors.secondaryLight }]}>
             <FontAwesome5 name="flag" size={24} color={colors.primary} />

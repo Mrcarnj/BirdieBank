@@ -34,14 +34,14 @@ export const fetchPlayers = createAsyncThunk(
   'player/fetchPlayers',
   async (userId: string, { rejectWithValue, getState }) => {
     try {
-      console.log('Fetching players for user ID:', userId);
+      // console.log('Fetching players for user ID:', userId);
       
       // Get the current user from the auth state
       const state = getState() as { auth: { user: any } };
       const currentUser = state.auth.user;
       
       // Fetch friends from the database - modify the query to avoid the embedding error
-      console.log('Fetching friends from database for user ID:', userId);
+      // console.log('Fetching friends from database for user ID:', userId);
       const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
         .select('*')  // Remove the users(*) join that's causing the error
@@ -52,13 +52,13 @@ export const fetchPlayers = createAsyncThunk(
         throw friendsError;
       }
       
-      console.log('Friends data from database:', friendsData);
-      console.log('Number of friends found:', friendsData?.length || 0);
+      // console.log('Friends data from database:', friendsData);
+      // console.log('Number of friends found:', friendsData?.length || 0);
       
       // Log each friend individually for better debugging
       if (friendsData) {
         friendsData.forEach((friend: any, index: number) => {
-          console.log(`Friend ${index}: ID=${friend.id}, Name=${friend.name}, isGuest=${friend.is_guest}`);
+          // console.log(`Friend ${index}: ID=${friend.id}, Name=${friend.name}, isGuest=${friend.is_guest}`);
         });
       }
       
@@ -73,7 +73,7 @@ export const fetchPlayers = createAsyncThunk(
         email: friend.email
       }));
       
-      console.log('Converted players:', players);
+      // console.log('Converted players:', players);
       
       // Add the current user to the players list if they're not already included
       if (currentUser) {
@@ -92,17 +92,18 @@ export const fetchPlayers = createAsyncThunk(
             name: userName,
             handicapIndex: currentUser.handicap,
             profileImageUrl: currentUser.profile_image_url,
-            isGuest: false
+            isGuest: false,
+            email: currentUser.email
           });
         }
       }
       
-      console.log('Final players list:', players);
-      console.log('Number of players after processing:', players.length);
+      // console.log('Final players list:', players);
+      // console.log('Number of players after processing:', players.length);
       
       // Log each player individually for better debugging
       players.forEach((player: Player, index: number) => {
-        console.log(`Player ${index}: Name=${player.name}, ID=${player.id}, isGuest=${player.isGuest}`);
+        // console.log(`Player ${index}: Name=${player.name}, ID=${player.id}, isGuest=${player.isGuest}`);
       });
       
       return players as Player[];

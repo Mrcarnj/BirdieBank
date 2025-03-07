@@ -6,17 +6,19 @@ export default function CoursesLayout() {
   const { colors } = useTheme();
 
   return (
-    <Stack screenOptions={{
-      headerShown: true,
-      headerStyle: {
-        backgroundColor: colors.primary,
-      },
-      headerTintColor: colors.textLight,
-      headerTitleStyle: {
-        fontWeight: 'bold',
-      },
-      headerBackTitle: 'Home',
-    }}
+    <Stack 
+      initialRouteName="index"
+      screenOptions={{
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.primary,
+        },
+        headerTintColor: colors.textLight,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        headerBackTitle: 'Home',
+      }}
     />
   );
 } 

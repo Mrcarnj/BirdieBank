@@ -17,6 +17,11 @@ export default function CourseDetailsScreen() {
   const { selectedCourse, isLoading, error } = useSelector((state: RootState) => state.course);
   const { colors, shadows } = useTheme();
 
+  // If the ID is 'index', we should not render this component at all
+  if (id === 'index') {
+    return null;
+  }
+
   useEffect(() => {
     if (id) {
       dispatch(fetchCourseById(id as string));

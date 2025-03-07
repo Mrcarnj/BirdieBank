@@ -16,7 +16,7 @@ import { useTheme } from '../../components/ThemeProvider';
 
 import { COLORS, SIZES, SHADOWS, FONTS } from '../../constants/theme';
 import Card from '../../components/Card';
-import { fetchCourses, Course } from '../../store/slices/courseSlice';
+import { fetchCourses } from '../../store/slices/courseSlice';
 import { AppDispatch, RootState } from '../../store';
 import { createFontStyle } from '../../utils/styleUtils';
 
@@ -24,10 +24,11 @@ export default function CoursesScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { courses, isLoading } = useSelector((state: RootState) => state.course);
-  const { colors } = useTheme();
+  const { colors, shadows } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    // Fetch courses when component mounts
     dispatch(fetchCourses());
   }, [dispatch]);
 
@@ -72,7 +73,7 @@ export default function CoursesScreen() {
   };
 
   // Function to get the correct hole count
-  const getHoleCount = (course: Course) => {
+  const getHoleCount = (course: any) => {
     // First check if hole_count is explicitly set
     if (course.hole_count) {
       return course.hole_count;
@@ -83,31 +84,45 @@ export default function CoursesScreen() {
       return course.holes.length;
     }
     
-    // Default to 18 if we don't have any information
+    // If we have tee_sets, try to infer from there
+    if (course.tee_sets && course.tee_sets.length > 0) {
+      // Check if any tee set has front_nine_yardage but not back_nine_yardage
+      const hasOnlyFrontNine = course.tee_sets.some(
+        (teeSet: any) => teeSet.front_nine_yardage && !teeSet.back_nine_yardage
+      );
+      
+      if (hasOnlyFrontNine) {
+        return 9;
+      }
+      
+      // Check total yardage - if it's typical for 9 holes
+      const firstTeeWithYardage = course.tee_sets.find((teeSet: any) => teeSet.total_yardage);
+      if (firstTeeWithYardage && firstTeeWithYardage.total_yardage < 4000) {
+        return 9;
+      }
+    }
+    
+    // Default to 18 if we can't determine
     return 18;
   };
 
-  // Function to get the number of tee options
-  const getTeeCount = (course: Course) => {
-    // First check if we have tee_sets data
+  // Function to count tee sets for a course
+  const getTeeCount = (course: any) => {
     if (course.tee_sets && course.tee_sets.length > 0) {
       return course.tee_sets.length;
     }
     
-    // Then check if we have tees data
     if (course.tees && course.tees.length > 0) {
       return course.tees.length;
     }
     
-    // Default to 0 if we don't have any information
     return 0;
   };
 
-  const renderCourseItem = ({ item }: { item: Course }) => (
-    <Card
-      key={item.id}
-      style={{ ...styles.courseCard, backgroundColor: colors.card }}
-      onPress={() => router.push(`/courses/${item.id}`)}
+  const renderCourseItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[styles.courseItem, { backgroundColor: colors.card, ...shadows.medium }]}
+      onPress={() => router.push(`/courses/${item.id}` as any)}
     >
       <View style={styles.courseHeader}>
         <Text style={[styles.courseName, { color: colors.textPrimary }]}>{item.name}</Text>
@@ -139,11 +154,11 @@ export default function CoursesScreen() {
           <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{getMostCommonPar(item)}</Text>
         </View>
       </View>
-    </Card>
+    </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen 
         options={{
           title: "Golf Courses",
@@ -154,8 +169,8 @@ export default function CoursesScreen() {
               style={{ flexDirection: 'row', alignItems: 'center' }}
               onPress={() => router.push('/(tabs)')}
             >
-              <Ionicons name="chevron-back" size={24} color={COLORS.textLight} />
-              <Text style={{ color: COLORS.textLight, marginLeft: 5 }}>Home</Text>
+              <Ionicons name="chevron-back" size={24} color={colors.textLight} />
+              <Text style={{ color: colors.textLight, marginLeft: 5 }}>Home</Text>
             </TouchableOpacity>
           ),
         }} 
@@ -163,8 +178,8 @@ export default function CoursesScreen() {
 
       {isLoading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading courses...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textPrimary }]}>Loading courses...</Text>
         </View>
       ) : (
         <FlatList
@@ -177,23 +192,23 @@ export default function CoursesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[COLORS.primary]}
+              colors={[colors.primary]}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <FontAwesome5 name="flag" size={40} color={COLORS.primary} />
+              <View style={[styles.emptyIconContainer, { backgroundColor: colors.secondaryLight }]}>
+                <FontAwesome5 name="flag" size={40} color={colors.primary} />
               </View>
-              <Text style={styles.emptyText}>No courses found</Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptyText, { color: colors.textPrimary }]}>No courses found</Text>
+              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
                 Add your favorite golf courses to get started
               </Text>
               <TouchableOpacity
-                style={styles.addCourseButton}
+                style={[styles.addCourseButton, { backgroundColor: colors.primary }]}
                 onPress={() => router.push('/courses/add' as any)}
               >
-                <Text style={styles.addCourseButtonText}>Add Course</Text>
+                <Text style={[styles.addCourseButtonText, { color: colors.secondary }]}>Add Course</Text>
               </TouchableOpacity>
             </View>
           }
@@ -206,7 +221,6 @@ export default function CoursesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   addButton: {
     marginRight: 16,
@@ -225,7 +239,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: COLORS.textPrimary,
     ...createFontStyle(FONTS.body3),
   },
   listContent: {
@@ -234,12 +247,8 @@ const styles = StyleSheet.create({
   },
   courseItem: {
     marginBottom: SIZES.base * 2,
-  },
-  courseCard: {
-    padding: SIZES.padding,
-    backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius,
-    ...SHADOWS.medium,
+    padding: SIZES.padding,
   },
   courseHeader: {
     flexDirection: 'row',
@@ -249,11 +258,9 @@ const styles = StyleSheet.create({
   },
   courseName: {
     ...createFontStyle(FONTS.h4),
-    color: COLORS.textPrimary,
   },
   courseLocation: {
     ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
   },
   courseDetails: {
     flexDirection: 'row',
@@ -274,12 +281,10 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     ...createFontStyle(FONTS.body5),
-    color: COLORS.textSecondary,
     marginBottom: SIZES.base / 2,
   },
   detailValue: {
     ...createFontStyle(FONTS.h5),
-    color: COLORS.textPrimary,
   },
   emptyContainer: {
     flex: 1,
@@ -292,7 +297,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.secondaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SIZES.base * 2,
@@ -300,17 +304,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...createFontStyle(FONTS.h3),
-    color: COLORS.textPrimary,
     marginBottom: SIZES.base,
   },
   emptySubtext: {
     ...createFontStyle(FONTS.body4),
-    color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: SIZES.padding,
   },
   addCourseButton: {
-    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: SIZES.radius,
@@ -319,6 +320,5 @@ const styles = StyleSheet.create({
   addCourseButtonText: {
     ...createFontStyle(FONTS.body4),
     fontWeight: '600',
-    color: COLORS.secondary,
   },
 }); 

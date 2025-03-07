@@ -77,22 +77,20 @@ export const fetchCourses = createAsyncThunk(
   'course/fetchCourses',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('Fetching courses...');
-      
-      // Get all courses
-      const { data: coursesData, error: coursesError } = await supabase
+      // Fetch courses from Supabase
+      const { data: coursesData, error } = await supabase
         .from('courses')
-        .select('*')
-        .order('name', { ascending: true });
+        .select('*');
       
-      if (coursesError) throw coursesError;
+      if (error) throw error;
       
       if (coursesData && coursesData.length > 0) {
-        // Fetch additional data for each course
-        const coursesWithDetails = await Promise.all(
+        // Fetch club data for each course
+        const coursesWithClubData = await Promise.all(
           coursesData.map(async (course) => {
-            // Get club data if available
             let clubData = null;
+            
+            // Get club data
             if (course.club_id) {
               const { data: clubResult, error: clubError } = await supabase
                 .from('clubs')
@@ -117,7 +115,7 @@ export const fetchCourses = createAsyncThunk(
               return { ...course, clubData, tee_sets: [] };
             }
             
-            // Get holes for this course
+            // Get holes data for this course
             const { data: holes, error: holesError } = await supabase
               .from('holes')
               .select('*')
@@ -138,14 +136,14 @@ export const fetchCourses = createAsyncThunk(
             const { data: holeTeeData, error: holeTeeError } = await supabase
               .from('hole_tee_data')
               .select('*')
-              .in('hole_id', holes.map(h => h.id));
+              .in('hole_id', holes ? holes.map(h => h.id) : []);
             
             if (holeTeeError) {
               console.error(`Error fetching hole tee data for course ${course.id}:`, holeTeeError);
             }
             
             // Process holes to match the expected format
-            const processedHoles = holes.map(hole => {
+            const processedHoles = holes ? holes.map(hole => {
               // Create yardage record for each tee
               const yardageRecord: Record<string, number> = {};
               
@@ -163,7 +161,7 @@ export const fetchCourses = createAsyncThunk(
                 handicap: hole.handicap,
                 yardage: yardageRecord
               };
-            });
+            }) : [];
             
             return { 
               ...course, 
@@ -175,8 +173,7 @@ export const fetchCourses = createAsyncThunk(
           })
         );
         
-        // console.log('First course with details:', JSON.stringify(coursesWithDetails[0], null, 2));
-        return coursesWithDetails;
+        return coursesWithClubData;
       }
       
       return coursesData;
