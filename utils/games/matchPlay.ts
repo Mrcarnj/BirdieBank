@@ -1,5 +1,6 @@
 import { HoleScore } from '../../store/slices/roundSlice';
 import { GameResult } from '../../store/slices/gameSlice';
+import { getMatchPlayStrokesReceived } from '../handicapUtils';
 
 interface Press {
   id: string;
@@ -90,13 +91,28 @@ export const calculateMatchPlayScore = (
       return;
     }
     
-    // Determine hole winner
-    if (player1Score < player2Score) {
+    // Get handicap information if available
+    const player1Handicap = settings.courseHandicaps?.[player1] || 0;
+    const player2Handicap = settings.courseHandicaps?.[player2] || 0;
+    
+    // Get the stroke index for the hole
+    const strokeIndex = settings.course?.holes?.find((h: { number: number }) => h.number === hole)?.handicap || 0;
+    
+    // Calculate strokes received for match play
+    const player1StrokesReceived = getMatchPlayStrokesReceived(player1Handicap, player2Handicap, strokeIndex);
+    const player2StrokesReceived = getMatchPlayStrokesReceived(player2Handicap, player1Handicap, strokeIndex);
+    
+    // Calculate net scores
+    const player1NetScore = player1Score - player1StrokesReceived;
+    const player2NetScore = player2Score - player2StrokesReceived;
+    
+    // Determine hole winner using net scores
+    if (player1NetScore < player2NetScore) {
       // Player 1 wins hole
       player1Up++;
       (results[0].details as MatchPlayDetails).holesWon++;
       (results[1].details as MatchPlayDetails).holesLost++;
-    } else if (player2Score < player1Score) {
+    } else if (player2NetScore < player1NetScore) {
       // Player 2 wins hole
       player1Up--;
       (results[0].details as MatchPlayDetails).holesLost++;

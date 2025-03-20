@@ -12,9 +12,9 @@ import { useRouter } from 'expo-router';
 import { FONTS, SIZES } from '../../constants/theme';
 import { RootState, AppDispatch, store } from '../../store';
 import { Course, fetchCourses, fetchNearbyCourses, selectCourse, Tee, fetchCourseById } from '../../store/slices/courseSlice';
-import { fetchPlayers, selectPlayer, Player as BasePlayer, PlayerWithTee, createFriend, ensureUserInFriendsTable } from '../../store/slices/playerSlice';
+import { fetchPlayers, selectPlayer, Player as BasePlayer, PlayerWithTee, createFriend, ensureUserInFriendsTable, clearSelectedPlayers } from '../../store/slices/playerSlice';
 import { startNewRound } from '../../store/slices/roundSlice';
-import { selectGame, removeGame } from '../../store/slices/gameSlice';
+import { selectGame, removeGame, clearSelectedGames } from '../../store/slices/gameSlice';
 import { createFontStyle } from '../../utils/styleUtils';
 import { useTheme } from '../../components/ThemeProvider';
 import { GAME_TYPES } from '../../utils/games';
@@ -82,8 +82,14 @@ export default function NewRoundScreen() {
     icon: string;
   } | null>(null);
 
-  // Load initial data
+  // Load initial data and clear previous selections
   useEffect(() => {
+    // Clear any existing player selections when the screen loads
+    dispatch(clearSelectedPlayers());
+    
+    // Clear any existing game selections as well
+    dispatch(clearSelectedGames());
+    
     dispatch(fetchCourses());
     if (user) {
       dispatch(fetchPlayers(user.id));

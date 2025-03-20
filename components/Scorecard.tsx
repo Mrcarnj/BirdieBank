@@ -11,7 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { Course, Hole } from '../store/slices/courseSlice';
 import { PlayerWithTee } from '../store/slices/playerSlice';
 import { HoleScore } from '../store/slices/roundSlice';
-import { getStrokesReceivedOnHole, calculateNetScore } from '../utils/handicapUtils';
+import { getStrokesReceivedOnHole, calculateNetScore, getMatchPlayStrokesReceived } from '../utils/handicapUtils';
 
 interface ScorecardProps {
   course: Course;
@@ -21,6 +21,7 @@ interface ScorecardProps {
   editable?: boolean;
   onScoreChange?: (score: HoleScore) => void;
   courseHandicaps?: Record<string, number>; // Add courseHandicaps prop
+  matchPlayMode?: boolean; // Add matchPlayMode prop
 }
 
 const Scorecard: React.FC<ScorecardProps> = ({
@@ -31,6 +32,7 @@ const Scorecard: React.FC<ScorecardProps> = ({
   editable = true,
   onScoreChange,
   courseHandicaps = {}, // Default to empty object
+  matchPlayMode = false, // Default to false
 }) => {
   const [activeCell, setActiveCell] = useState<{
     playerId: string;
@@ -91,7 +93,7 @@ const Scorecard: React.FC<ScorecardProps> = ({
     const grossTotal = calculateTotalScore(playerId);
     if (grossTotal === 0) return undefined;
     
-    // Calculate total strokes received
+    // Calculate total strokes received based on full course handicap (not match play differential)
     const totalStrokesReceived = holeRange.reduce((total, holeNumber) => {
       return total + getStrokesReceived(playerId, holeNumber);
     }, 0);
@@ -147,14 +149,34 @@ const Scorecard: React.FC<ScorecardProps> = ({
     if (!hole || !courseHandicaps[playerId]) return 0;
     
     // Get the stroke index (handicap) of the hole
-    // Use only hole.handicap since strokeIndex doesn't exist on the Hole type
     const strokeIndex = hole.handicap || 0;
     
     // Get the player's course handicap
     const courseHandicap = courseHandicaps[playerId] || 0;
     
-    // Calculate strokes received
+    // For net score calculation, always use the full course handicap
     return getStrokesReceivedOnHole(courseHandicap, strokeIndex);
+  };
+  
+  // Separate function to determine match play strokes for display purposes
+  const getMatchPlayStrokesForDisplay = (playerId: string, holeNumber: number): number => {
+    if (!matchPlayMode || players.length !== 2) return 0;
+    
+    const hole = getHoleData(holeNumber);
+    if (!hole) return 0;
+    
+    // Get the stroke index (handicap) of the hole
+    const strokeIndex = hole.handicap || 0;
+    
+    // Get player handicap
+    const playerHandicap = courseHandicaps[playerId] || 0;
+    
+    // Get opponent handicap
+    const opponentId = players[0].id === playerId ? players[1].id : players[0].id;
+    const opponentHandicap = courseHandicaps[opponentId] || 0;
+    
+    // Use match play strokes calculation only for display dots
+    return getMatchPlayStrokesReceived(playerHandicap, opponentHandicap, strokeIndex);
   };
 
   // Function to calculate net score
@@ -162,6 +184,7 @@ const Scorecard: React.FC<ScorecardProps> = ({
     const grossScore = getPlayerScore(playerId, holeNumber);
     if (grossScore === undefined) return undefined;
     
+    // Always use the full course handicap for net score calculation, even in match play
     const strokesReceived = getStrokesReceived(playerId, holeNumber);
     if (strokesReceived === 0) return undefined; // Only return net if strokes received
     
@@ -276,6 +299,23 @@ const Scorecard: React.FC<ScorecardProps> = ({
     }
   };
 
+  // Calculate match play total handicap difference for display
+  const getMatchPlayHandicap = (playerId: string): number => {
+    if (!matchPlayMode || players.length !== 2) return 0;
+    
+    const playerHandicap = courseHandicaps[playerId] || 0;
+    const opponentId = players[0].id === playerId ? players[1].id : players[0].id;
+    const opponentHandicap = courseHandicaps[opponentId] || 0;
+    
+    if (playerHandicap <= opponentHandicap) {
+      // Lower handicap player gets 0 strokes in match play
+      return 0;
+    } else {
+      // Higher handicap player gets the difference
+      return playerHandicap - opponentHandicap;
+    }
+  };
+
   return (
     <View style={styles.outerContainer}>
       <View style={styles.container}>
@@ -294,6 +334,7 @@ const Scorecard: React.FC<ScorecardProps> = ({
           ))}
           <View style={[styles.totalCell, styles.totalHeaderCell]}>
             <Text style={styles.headerText}>Total</Text>
+            <Text style={styles.parText}>(Net)</Text>
           </View>
         </View>
         
@@ -307,7 +348,13 @@ const Scorecard: React.FC<ScorecardProps> = ({
                 {courseHandicaps[player.id] !== undefined && (
                   <Text style={styles.handicapText}> ({courseHandicaps[player.id]})</Text>
                 )}
+                {matchPlayMode && players.length === 2 && (
+                  <Text style={styles.matchHandicapText}>
+                    {' // '}{getMatchPlayHandicap(player.id) > 0 ? `${getMatchPlayHandicap(player.id)}` : '0'}
+                  </Text>
+                )}
               </View>
+              
               <View style={styles.teeContainer}>
                 <View 
                   style={[
@@ -326,8 +373,14 @@ const Scorecard: React.FC<ScorecardProps> = ({
               const score = getPlayerScore(player.id, holeNumber);
               const par = getHoleData(holeNumber)?.par || 0;
               const isActive = activeCell?.playerId === player.id && activeCell?.holeNumber === holeNumber;
+              
+              // Use full course handicap for net score calculation
               const strokesReceived = getStrokesReceived(player.id, holeNumber);
               const netScore = getNetScore(player.id, holeNumber);
+              
+              // Use match play strokes for display dots
+              const matchPlayStrokes = matchPlayMode ? 
+                getMatchPlayStrokesForDisplay(player.id, holeNumber) : strokesReceived;
               
               return (
                 <TouchableOpacity
@@ -339,14 +392,6 @@ const Scorecard: React.FC<ScorecardProps> = ({
                   onPress={() => handleScorePress(player.id, holeNumber)}
                   disabled={!editable}
                 >
-                  {strokesReceived > 0 && (
-                    <View style={styles.strokesContainer}>
-                      {[...Array(strokesReceived)].map((_, i) => (
-                        <View key={i} style={styles.strokeDot} />
-                      ))}
-                    </View>
-                  )}
-                  
                   {isActive ? (
                     <TextInput
                       style={styles.scoreInput}
@@ -384,11 +429,33 @@ const Scorecard: React.FC<ScorecardProps> = ({
                         </Text>
                       )}
                     
-                      {netScore !== undefined && score !== undefined && (
+                      {netScore !== undefined && score !== undefined && 
+                        (matchPlayMode ? 
+                          getMatchPlayStrokesForDisplay(player.id, holeNumber) > 0 : 
+                          strokesReceived > 0) && (
                         <Text style={styles.netScoreText}>
                           ({netScore})
                         </Text>
                       )}
+                    </View>
+                  )}
+
+                  {/* Show strokes received indicators - uses match play strokes when in match play mode */}
+                  {matchPlayStrokes > 0 && (
+                    <View style={styles.strokesContainer}>
+                      {[...Array(matchPlayStrokes)].map((_, i) => (
+                        <View 
+                          key={i} 
+                          style={[
+                            styles.strokeDot,
+                            matchPlayMode && { 
+                              backgroundColor: COLORS.error,
+                              borderWidth: 1,
+                              borderColor: 'white' 
+                            }
+                          ]} 
+                        />
+                      ))}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -641,6 +708,11 @@ const styles = StyleSheet.create({
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  matchHandicapText: {
+    fontSize: 12,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
   },
 });
 

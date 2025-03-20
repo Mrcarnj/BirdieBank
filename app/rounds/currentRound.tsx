@@ -25,6 +25,7 @@ import { updateGameResults } from '../../store/slices/gameSlice';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Scorecard from '../../components/Scorecard';
+import MatchPlayStatus from '../../components/MatchPlayStatus';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { createFontStyle } from '../../utils/styleUtils';
@@ -191,7 +192,30 @@ export default function RoundScreen() {
   const handleScoreChange = useCallback((score: HoleScore) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     dispatch(addScore(score));
-  }, [dispatch]);
+    
+    // If we have active games, update the game results in real-time
+    if (selectedGames.length > 0 && currentRound) {
+      // First, create a temporary scores array with the new score
+      const updatedScores = [...currentRound.scores];
+      const existingScoreIndex = updatedScores.findIndex(
+        s => s.playerId === score.playerId && s.holeNumber === score.holeNumber
+      );
+      
+      if (existingScoreIndex >= 0) {
+        // Update existing score
+        updatedScores[existingScoreIndex] = score;
+      } else {
+        // Add new score
+        updatedScores.push(score);
+      }
+      
+      // Update game results with the updated scores
+      dispatch(updateGameResults({
+        scores: updatedScores,
+        roundId: currentRound.id
+      }));
+    }
+  }, [dispatch, currentRound, selectedGames]);
 
   // Handle navigation to previous hole
   const handlePreviousHole = useCallback(() => {
@@ -282,6 +306,12 @@ export default function RoundScreen() {
     
     return {};
   }, [currentRound]);
+
+  // Check if match play game is active
+  const hasMatchPlayGame = useMemo(() => {
+    if (!selectedGames || selectedGames.length === 0) return false;
+    return selectedGames.some(game => game.type === 'match-play');
+  }, [selectedGames]);
 
   // Show loading screen if navigating away
   if (isNavigating || roundCompleted) {
@@ -389,6 +419,18 @@ export default function RoundScreen() {
           </View>
         </Card>
         
+        {/* Show Match Play Status if match play game is active */}
+        {hasMatchPlayGame && currentRound?.players?.length === 2 && (
+          <MatchPlayStatus
+            players={currentRound.players}
+            scores={currentRound.scores}
+            course={currentRound.course!}
+            currentHole={currentHole}
+            holeRange={holeRange}
+            courseHandicaps={courseHandicaps}
+          />
+        )}
+        
         <View style={styles.scorecardContainer}>
           <Scorecard
             course={currentRound!.course!}
@@ -398,6 +440,7 @@ export default function RoundScreen() {
             editable={true}
             onScoreChange={handleScoreChange}
             courseHandicaps={courseHandicaps}
+            matchPlayMode={hasMatchPlayGame}
           />
         </View>
         

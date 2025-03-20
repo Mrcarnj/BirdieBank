@@ -225,4 +225,24 @@ export const getCourseHandicaps = (
   });
   
   return courseHandicaps;
+};
+
+/**
+ * Calculate match play strokes for a player on a specific hole
+ * Takes into account the difference between player handicaps
+ * Returns the number of strokes received by a player against their opponent
+ */
+export const getMatchPlayStrokesReceived = (
+  playerHandicap: number,
+  opponentHandicap: number,
+  strokeIndex: number
+): number => {
+  // If player's handicap is equal to or less than opponent's, no strokes received
+  if (playerHandicap <= opponentHandicap) return 0;
+  
+  // Calculate the handicap difference
+  const handicapDifference = playerHandicap - opponentHandicap;
+  
+  // Use the standard function but with the handicap difference
+  return getStrokesReceivedOnHole(handicapDifference, strokeIndex);
 }; 

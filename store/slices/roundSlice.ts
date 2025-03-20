@@ -3,7 +3,8 @@ import { supabase, SupabaseTransaction } from '../../lib/supabase';
 import { Course } from './courseSlice';
 import { PlayerWithTee } from './playerSlice';
 import { updateRoundWithNetScores, formatRoundData } from '../../utils/roundUtils';
-import { ensureUserInFriendsTable } from './playerSlice';
+import { ensureUserInFriendsTable, clearSelectedPlayers } from './playerSlice';
+import { clearSelectedGames } from './gameSlice';
 
 export type HoleSelection = 'front9' | 'back9' | 'full18' | 'custom';
 export type HoleScore = {
@@ -639,6 +640,12 @@ export const completeRound = createAsyncThunk(
           
           if (friendError) throw friendError;
         }
+        
+        // Clear selected players when a round is completed
+        dispatch(clearSelectedPlayers());
+        
+        // Also clear selected games
+        dispatch(clearSelectedGames());
         
         return {
           ...round,
