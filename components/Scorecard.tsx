@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import { Course, Hole } from '../store/slices/courseSlice';
 import { PlayerWithTee } from '../store/slices/playerSlice';
 import { HoleScore } from '../store/slices/roundSlice';
 import { getStrokesReceivedOnHole, calculateNetScore, getMatchPlayStrokesReceived } from '../utils/handicapUtils';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 interface ScorecardProps {
   course: Course;
@@ -38,6 +40,21 @@ const Scorecard: React.FC<ScorecardProps> = ({
     playerId: string;
     holeNumber: number;
   } | null>(null);
+  
+  // Get the current user ID from Redux store
+  const { user } = useSelector((state: RootState) => state.auth);
+  const currentUserId = user?.id;
+  
+  // Sort players to ensure current user is always first
+  const sortedPlayers = useMemo(() => {
+    if (!currentUserId) return players;
+    
+    return [...players].sort((a, b) => {
+      if (a.id === currentUserId) return -1;
+      if (b.id === currentUserId) return 1;
+      return 0;
+    });
+  }, [players, currentUserId]);
 
   const getHoleData = (holeNumber: number): Hole | undefined => {
     return course.holes.find(hole => hole.number === holeNumber);
@@ -339,7 +356,7 @@ const Scorecard: React.FC<ScorecardProps> = ({
         </View>
         
         {/* Player Rows */}
-        {players.map(player => (
+        {sortedPlayers.map(player => (
           <View key={player.id} style={styles.row}>
             {/* Player Cell */}
             <View style={styles.playerCell}>

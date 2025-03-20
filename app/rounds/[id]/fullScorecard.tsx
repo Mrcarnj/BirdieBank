@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,10 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ViewStyle,
-  TextStyle
+  TextStyle,
+  Animated,
+  Dimensions,
+  PanResponder
 } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,9 +119,33 @@ const ScorecardScreen = () => {
 // Component to display the full scorecard with front 9, back 9, and totals
 const FullScorecard = ({ round }: ScorecardProps) => {
   const { colors } = useTheme();
+  const { auth } = useSelector((state: RootState) => state);
+  const currentUserId = auth.user?.id;
   
   // Parse the course data to get holes - remove courseHandicaps from destructuring
   const { course, players, scores } = round;
+  
+  // State for selected player
+  const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
+  
+  // Set initial selected player to be the current user or the first player
+  useEffect(() => {
+    if (players && players.length > 0 && currentUserId) {
+      const currentUserIndex = players.findIndex(player => player.userId === currentUserId);
+      if (currentUserIndex !== -1) {
+        setSelectedPlayerIndex(currentUserIndex);
+      }
+    }
+  }, [players, currentUserId]);
+  
+  // Helper function to format player name (first name + last initial)
+  const formatPlayerName = (name: string): string => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0]; // Only one name
+    const firstName = parts[0];
+    const lastInitial = parts[parts.length - 1][0]; // First character of last name
+    return `${firstName} ${lastInitial}.`;
+  };
   
   // Calculate course handicaps using the same approach as in currentRound.tsx
   const effectiveCourseHandicaps = useMemo(() => {
@@ -352,50 +379,101 @@ const FullScorecard = ({ round }: ScorecardProps) => {
     return { color: colors.textPrimary };
   };
   
+  // Get the currently selected player with safety check
+  const selectedPlayer = players[selectedPlayerIndex] || players[0];
+  
+  // Safety check - reset to first player if selected index is invalid
+  useEffect(() => {
+    if (selectedPlayerIndex >= players.length || selectedPlayerIndex < 0) {
+      console.log("Resetting player index - out of bounds:", selectedPlayerIndex, "max:", players.length - 1);
+      setSelectedPlayerIndex(0);
+    }
+  }, [selectedPlayerIndex, players]);
+  
+  // Ensure we have a valid player before rendering
+  if (!selectedPlayer) {
+    console.log("No selected player, defaulting to first player");
+    return (
+      <View style={[styles.scorecardContainer, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={{ color: colors.textPrimary }}>Loading player data...</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.scorecardContainer}>
-      {/* Unified Scorecard */}
-      <View style={[styles.scorecardSection, { backgroundColor: colors.card, borderWidth: 1, borderColor: 'black' }]}>
-        {/* Hole numbers row */}
-        <View style={styles.row}>
-          <View style={styles.holeHeader}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Hole</Text>
-          </View>
-          {front9.map(holeNumber => (
-            <View key={`hole-${holeNumber}`} style={[styles.holeCell, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.headerText, { color: colors.textLight }]}>{holeNumber}</Text>
-            </View>
-          ))}
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Out</Text>
-          </View>
-        </View>
-        
-        {/* Par row */}
-        <View style={styles.row}>
-          <View style={styles.holeHeader}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Par</Text>
-          </View>
-          {front9.map(holeNumber => {
-            const hole = getHoleData(holeNumber);
-            return (
-              <View key={`par-${holeNumber}`} style={styles.holeCell}>
-                <Text style={[styles.parText, { color: colors.textSecondary }]}>
-                  {hole?.par || '-'}
+      {/* Player Selection Tabs */}
+      {players.length > 1 && (
+        <View style={styles.playerTabsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.playerTabs}>
+            {players.map((player, index) => (
+              <TouchableOpacity
+                key={player.id}
+                style={[
+                  styles.playerTab,
+                  index === selectedPlayerIndex && styles.activePlayerTab,
+                  { borderColor: colors.primary }
+                ]}
+                onPress={() => setSelectedPlayerIndex(index)}
+              >
+                <Text 
+                  style={[
+                    styles.playerTabText,
+                    index === selectedPlayerIndex && styles.activePlayerTabText,
+                    { color: index === selectedPlayerIndex ? colors.primary : colors.textPrimary }
+                  ]}
+                >
+                  {formatPlayerName(player.name)}
                 </Text>
-              </View>
-            );
-          })}
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.parText, { color: colors.textSecondary }]}>
-              {calculateTotalPar(front9)}
-            </Text>
-          </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-        
-        {/* Player scores for front 9 */}
-        {players.map(player => (
-          <React.Fragment key={`front9-${player.id}`}>
+      )}
+      
+      {/* Scorecard View */}
+      <View style={styles.animatedScorecard}>
+        {/* Unified Scorecard */}
+        <View style={[styles.scorecardSection, { backgroundColor: colors.card, borderWidth: 1, borderColor: 'black' }]}>
+          {/* Hole numbers row */}
+          <View style={styles.row}>
+            <View style={styles.holeHeader}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Hole</Text>
+            </View>
+            {front9.map(holeNumber => (
+              <View key={`hole-${holeNumber}`} style={[styles.holeCell, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.headerText, { color: colors.textLight }]}>{holeNumber}</Text>
+              </View>
+            ))}
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Out</Text>
+            </View>
+          </View>
+          
+          {/* Par row */}
+          <View style={styles.row}>
+            <View style={styles.holeHeader}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Par</Text>
+            </View>
+            {front9.map(holeNumber => {
+              const hole = getHoleData(holeNumber);
+              return (
+                <View key={`par-${holeNumber}`} style={styles.holeCell}>
+                  <Text style={[styles.parText, { color: colors.textSecondary }]}>
+                    {hole?.par || '-'}
+                  </Text>
+                </View>
+              );
+            })}
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.parText, { color: colors.textSecondary }]}>
+                {calculateTotalPar(front9)}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Selected player scores for front 9 */}
+          <React.Fragment key={`front9-${selectedPlayer.id}`}>
             {/* Gross Score Row */}
             <View style={styles.row}>
               <View style={styles.playerCell}>
@@ -405,14 +483,14 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               </View>
               
               {front9.map(holeNumber => {
-                const score = getPlayerScore(player.id, holeNumber);
+                const score = getPlayerScore(selectedPlayer.id, holeNumber);
                 const hole = getHoleData(holeNumber);
                 const par = hole?.par || 0;
-                const strokesReceived = getStrokesReceived(player.id, holeNumber);
+                const strokesReceived = getStrokesReceived(selectedPlayer.id, holeNumber);
                 
                 return (
                   <View 
-                    key={`score-${player.id}-${holeNumber}`} 
+                    key={`score-${selectedPlayer.id}-${holeNumber}`} 
                     style={[
                       styles.scoreCell,
                       getScoreStyle(score, par)
@@ -431,7 +509,7 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
                 <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>
-                  {calculateTotalScore(player.id, front9)}
+                  {calculateTotalScore(selectedPlayer.id, front9)}
                 </Text>
               </View>
             </View>
@@ -445,14 +523,14 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               </View>
               
               {front9.map(holeNumber => {
-                const netScore = getNetScore(player.id, holeNumber);
+                const netScore = getNetScore(selectedPlayer.id, holeNumber);
                 const hole = getHoleData(holeNumber);
                 const par = hole?.par || 0;
-                const strokesReceived = getStrokesReceived(player.id, holeNumber);
+                const strokesReceived = getStrokesReceived(selectedPlayer.id, holeNumber);
                 
                 return (
                   <View 
-                    key={`net-${player.id}-${holeNumber}`} 
+                    key={`net-${selectedPlayer.id}-${holeNumber}`} 
                     style={[
                       styles.scoreCell,
                       getScoreStyle(netScore, par)
@@ -467,62 +545,60 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
                 <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>
-                  {calculateNetTotalScore(player.id, front9)}
+                  {calculateNetTotalScore(selectedPlayer.id, front9)}
                 </Text>
               </View>
             </View>
           </React.Fragment>
-        ))}
-        
-        {/* Back 9 Holes Section */}
-        {/* Hole numbers row */}
-        <View style={styles.row}>
-          <View style={styles.holeHeader}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Hole</Text>
-          </View>
-          {back9.map(holeNumber => (
-            <View key={`hole-${holeNumber}`} style={[styles.holeCell, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.headerText, { color: colors.textLight }]}>{holeNumber}</Text>
+          
+          {/* Back 9 Holes Section */}
+          {/* Hole numbers row */}
+          <View style={styles.row}>
+            <View style={styles.holeHeader}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Hole</Text>
             </View>
-          ))}
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>In</Text>
-          </View>
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Tot</Text>
-          </View>
-        </View>
-        
-        {/* Par row */}
-        <View style={styles.row}>
-          <View style={styles.holeHeader}>
-            <Text style={[styles.headerText, { color: colors.textSecondary }]}>Par</Text>
-          </View>
-          {back9.map(holeNumber => {
-            const hole = getHoleData(holeNumber);
-            return (
-              <View key={`par-${holeNumber}`} style={styles.holeCell}>
-                <Text style={[styles.parText, { color: colors.textSecondary }]}>
-                  {hole?.par || '-'}
-                </Text>
+            {back9.map(holeNumber => (
+              <View key={`hole-${holeNumber}`} style={[styles.holeCell, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.headerText, { color: colors.textLight }]}>{holeNumber}</Text>
               </View>
-            );
-          })}
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.parText, { color: colors.textSecondary }]}>
-              {calculateTotalPar(back9)}
-            </Text>
+            ))}
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>In</Text>
+            </View>
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Tot</Text>
+            </View>
           </View>
-          <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-            <Text style={[styles.parText, { color: colors.textSecondary }]}>
-              {calculateTotalPar(allHoles)}
-            </Text>
+          
+          {/* Par row */}
+          <View style={styles.row}>
+            <View style={styles.holeHeader}>
+              <Text style={[styles.headerText, { color: colors.textSecondary }]}>Par</Text>
+            </View>
+            {back9.map(holeNumber => {
+              const hole = getHoleData(holeNumber);
+              return (
+                <View key={`par-${holeNumber}`} style={styles.holeCell}>
+                  <Text style={[styles.parText, { color: colors.textSecondary }]}>
+                    {hole?.par || '-'}
+                  </Text>
+                </View>
+              );
+            })}
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.parText, { color: colors.textSecondary }]}>
+                {calculateTotalPar(back9)}
+              </Text>
+            </View>
+            <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
+              <Text style={[styles.parText, { color: colors.textSecondary }]}>
+                {calculateTotalPar(allHoles)}
+              </Text>
+            </View>
           </View>
-        </View>
-        
-        {/* Player scores for back 9 */}
-        {players.map(player => (
-          <React.Fragment key={`back9-${player.id}`}>
+          
+          {/* Selected player scores for back 9 */}
+          <React.Fragment key={`back9-${selectedPlayer.id}`}>
             {/* Gross Score Row */}
             <View style={styles.row}>
               <View style={styles.playerCell}>
@@ -532,14 +608,14 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               </View>
               
               {back9.map(holeNumber => {
-                const score = getPlayerScore(player.id, holeNumber);
+                const score = getPlayerScore(selectedPlayer.id, holeNumber);
                 const hole = getHoleData(holeNumber);
                 const par = hole?.par || 0;
-                const strokesReceived = getStrokesReceived(player.id, holeNumber);
+                const strokesReceived = getStrokesReceived(selectedPlayer.id, holeNumber);
                 
                 return (
                   <View 
-                    key={`score-${player.id}-${holeNumber}`} 
+                    key={`score-${selectedPlayer.id}-${holeNumber}`} 
                     style={[
                       styles.scoreCell,
                       getScoreStyle(score, par)
@@ -558,17 +634,17 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
                 <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>
-                  {calculateTotalScore(player.id, back9)}
+                  {calculateTotalScore(selectedPlayer.id, back9)}
                 </Text>
               </View>
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-                {isTotalUnderPar(player.id, [...front9, ...back9]) ? (
+                {isTotalUnderPar(selectedPlayer.id, [...front9, ...back9]) ? (
                   <Text style={[styles.totalScoreText, { color: '#FF0000' }]}>
-                    {calculateTotalScore(player.id, [...front9, ...back9])}
+                    {calculateTotalScore(selectedPlayer.id, [...front9, ...back9])}
                   </Text>
                 ) : (
-                  <Text style={[styles.totalScoreText, { color: '#FFFFFF' }]}>
-                    {calculateTotalScore(player.id, [...front9, ...back9])}
+                  <Text style={[styles.totalScoreText, { color: '#000000' }]}>
+                    {calculateTotalScore(selectedPlayer.id, [...front9, ...back9])}
                   </Text>
                 )}
               </View>
@@ -583,13 +659,13 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               </View>
               
               {back9.map(holeNumber => {
-                const netScore = getNetScore(player.id, holeNumber);
+                const netScore = getNetScore(selectedPlayer.id, holeNumber);
                 const hole = getHoleData(holeNumber);
                 const par = hole?.par || 0;
                 
                 return (
                   <View 
-                    key={`net-${player.id}-${holeNumber}`} 
+                    key={`net-${selectedPlayer.id}-${holeNumber}`} 
                     style={[
                       styles.scoreCell,
                       getScoreStyle(netScore, par)
@@ -604,24 +680,33 @@ const FullScorecard = ({ round }: ScorecardProps) => {
               
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
                 <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>
-                  {calculateNetTotalScore(player.id, back9)}
+                  {calculateNetTotalScore(selectedPlayer.id, back9)}
                 </Text>
               </View>
               <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
-                {isNetTotalUnderPar(player.id, [...front9, ...back9]) ? (
+                {isNetTotalUnderPar(selectedPlayer.id, [...front9, ...back9]) ? (
                   <Text style={[styles.totalScoreText, { color: '#FF0000' }]}>
-                    {calculateNetTotalScore(player.id, [...front9, ...back9])}
+                    {calculateNetTotalScore(selectedPlayer.id, [...front9, ...back9])}
                   </Text>
                 ) : (
-                  <Text style={[styles.totalScoreText, { color: '#FFFFFF' }]}>
-                    {calculateNetTotalScore(player.id, [...front9, ...back9])}
+                  <Text style={[styles.totalScoreText, { color: '#000000' }]}>
+                    {calculateNetTotalScore(selectedPlayer.id, [...front9, ...back9])}
                   </Text>
                 )}
               </View>
             </View>
           </React.Fragment>
-        ))}
+        </View>
       </View>
+      
+      {/* Player selection instructions */}
+      {players.length > 1 && (
+        <View style={styles.swipeInstructions}>
+          <Text style={[styles.swipeText, { color: colors.textSecondary }]}>
+            Tap a player's name to view their scorecard
+          </Text>
+        </View>
+      )}
       
       {/* Legend */}
       <View style={[styles.legendContainer, { backgroundColor: colors.card, marginTop: SIZES.base, borderWidth: 1, borderColor: 'black' }]}>
@@ -852,6 +937,45 @@ const styles = StyleSheet.create({
   legendDescription: {
     fontSize: 10,
     textAlign: 'center',
+  },
+  playerTabsContainer: {
+    marginBottom: 10,
+    width: '100%',
+  },
+  playerTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+  },
+  playerTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: 'transparent',
+  },
+  activePlayerTab: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 2,
+  },
+  playerTabText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  activePlayerTabText: {
+    fontWeight: 'bold',
+  },
+  animatedScorecard: {
+    width: '100%',
+  },
+  swipeInstructions: {
+    alignItems: 'center',
+    padding: 8,
+  },
+  swipeText: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });
 
