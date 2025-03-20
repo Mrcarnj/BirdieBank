@@ -456,9 +456,9 @@ export default function RoundScreen() {
             title="View Scorecard"
             onPress={() => {
               router.push({
-                pathname: `/rounds/${currentRound!.id}/scorecard`,
-                params: { roundId: currentRound!.id }
-              } as any);
+                pathname: `/rounds/[id]/fullScorecard`,
+                params: { id: currentRound!.id, roundId: currentRound!.id }
+              });
             }}
           />
         </View>
