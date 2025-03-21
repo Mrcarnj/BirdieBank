@@ -6,12 +6,12 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { useTheme } from './ThemeProvider';
-import { COLORS, FONTS, SIZES } from '../constants/theme';
-import { Course, Hole } from '../store/slices/courseSlice';
-import { PlayerWithTee } from '../store/slices/playerSlice';
-import { HoleScore, Round } from '../store/slices/roundSlice';
-import { getMatchPlayStrokesReceived } from '../utils/handicapUtils';
+import { useTheme } from '../ThemeProvider';
+import { COLORS, FONTS, SIZES } from '../../constants/theme';
+import { Course, Hole } from '../../store/slices/courseSlice';
+import { PlayerWithTee } from '../../store/slices/playerSlice';
+import { HoleScore, Round } from '../../store/slices/roundSlice';
+import { getMatchPlayStrokesReceived } from '../../utils/handicapUtils';
 
 interface MatchPlayScorecardProps {
   round: Round;

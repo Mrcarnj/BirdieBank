@@ -1,13 +1,13 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, FONTS, SIZES } from '../constants/theme';
-import { HoleScore } from '../store/slices/roundSlice';
-import { PlayerWithTee } from '../store/slices/playerSlice';
-import { Course, Hole } from '../store/slices/courseSlice';
-import { getMatchPlayStrokesReceived } from '../utils/handicapUtils';
-import { useTheme } from './ThemeProvider';
+import { COLORS, FONTS, SIZES } from '../../constants/theme';
+import { HoleScore } from '../../store/slices/roundSlice';
+import { PlayerWithTee } from '../../store/slices/playerSlice';
+import { Course, Hole } from '../../store/slices/courseSlice';
+import { getMatchPlayStrokesReceived } from '../../utils/handicapUtils';
+import { useTheme } from '../ThemeProvider';
 import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { RootState } from '../../store';
 
 interface MatchPlayStatusProps {
   players: PlayerWithTee[];

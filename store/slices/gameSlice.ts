@@ -9,7 +9,7 @@ export interface GameResult {
   playerId: string;
   points: number;
   amount: number;
-  details?: Record<string, any>; // Game-specific details
+  details: Record<string, any>; // Game-specific details
 }
 
 export interface Game {
@@ -125,7 +125,7 @@ export const calculateNassauScore = (
     
     if (result.playerId === totalWinner) {
       points += 1;
-      amount += settings.totalStake || 1;
+      amount += settings.overallStake || 1;
       result.details.total = 1;
     } else if (totalWinner) {
       result.details.total = -1;
@@ -134,6 +134,24 @@ export const calculateNassauScore = (
     result.points = points;
     result.amount = amount;
   });
+  
+  // Handle presses if enabled
+  if (settings.pressType && settings.pressType !== 'none' && settings.pressStake) {
+    // Add press details to each player's results
+    results.forEach(result => {
+      if (settings.pressType === 'anytime') {
+        // For anytime presses, we need to track when players are 2 down
+        // This would require additional game state tracking
+        // For now, we'll just note that presses are enabled
+        result.details.presses = [{ type: 'anytime', stake: settings.pressStake }];
+      } else if (settings.pressType === 'auto') {
+        // For auto presses, we need to track when players are 2 down
+        // This would require additional game state tracking
+        // For now, we'll just note that presses are enabled
+        result.details.presses = [{ type: 'auto', stake: settings.pressStake }];
+      }
+    });
+  }
   
   return results;
 };
@@ -223,20 +241,20 @@ export const calculateStablefordScore = (
   // Define scoring system
   const scoringSystem = settings.modifiedScoring ? 
     { // Modified Stableford
-      3: 5, // Albatross (3 under par)
-      2: 4, // Eagle (2 under par)
-      1: 3, // Birdie (1 under par)
-      0: 2, // Par
-      1: 1, // Bogey (1 over par)
-      2: 0  // Double Bogey or worse (2+ over par)
+      albatross: 5, // 3 under par
+      eagle: 4,     // 2 under par
+      birdie: 3,    // 1 under par
+      par: 2,       // Even par
+      bogey: 1,     // 1 over par
+      doubleBogey: 0 // 2+ over par
     } : 
     { // Traditional Stableford
-      3: 5, // Albatross (3 under par)
-      2: 4, // Eagle (2 under par)
-      1: 3, // Birdie (1 under par)
-      0: 2, // Par
-      1: 0, // Bogey (1 over par)
-      2: -1 // Double Bogey (2 over par)
+      albatross: 5, // 3 under par
+      eagle: 4,     // 2 under par
+      birdie: 3,    // 1 under par
+      par: 2,       // Even par
+      bogey: 0,     // 1 over par
+      doubleBogey: -1 // 2+ over par
     };
   
   // Calculate points for each hole
@@ -254,17 +272,17 @@ export const calculateStablefordScore = (
     // Determine points based on scoring system
     let points = 0;
     if (relativeScore <= -3) {
-      points = scoringSystem[3]; // Albatross or better
+      points = scoringSystem.albatross;
     } else if (relativeScore === -2) {
-      points = scoringSystem[2]; // Eagle
+      points = scoringSystem.eagle;
     } else if (relativeScore === -1) {
-      points = scoringSystem[1]; // Birdie
+      points = scoringSystem.birdie;
     } else if (relativeScore === 0) {
-      points = scoringSystem[0]; // Par
+      points = scoringSystem.par;
     } else if (relativeScore === 1) {
-      points = scoringSystem[1]; // Bogey
+      points = scoringSystem.bogey;
     } else {
-      points = scoringSystem[2]; // Double bogey or worse
+      points = scoringSystem.doubleBogey;
     }
     
     // Update player's points
@@ -376,6 +394,7 @@ const gameSlice = createSlice({
           playerId: p.id,
           points: 0,
           amount: 0,
+          details: {} // Initialize empty details object
         })),
         settings,
       };

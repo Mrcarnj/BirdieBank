@@ -8,7 +8,9 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   ScrollView,
-  Switch
+  Switch,
+  Picker,
+  Alert
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { FONTS, SIZES } from '../../constants/theme';
@@ -38,6 +40,16 @@ export interface GameConfig {
   settings: Record<string, any>;
 }
 
+type PressType = 'none' | 'anytime' | 'auto';
+
+interface NassauSettings {
+  frontNineStake: number;
+  backNineStake: number;
+  overallStake: number;
+  pressType: PressType;
+  pressStake?: number;
+}
+
 const GameConfigModal: React.FC<GameConfigModalProps> = ({ 
   visible, 
   onClose, 
@@ -50,6 +62,13 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
   const [gameStake, setGameStake] = useState('1');
   const [gameTeams, setGameTeams] = useState<{[playerId: string]: number}>({});
   const [gameSettings, setGameSettings] = useState<Record<string, any>>({});
+  const [nassauSettings, setNassauSettings] = useState<NassauSettings>({
+    frontNineStake: 5,
+    backNineStake: 5,
+    overallStake: 10,
+    pressType: 'none',
+    pressStake: 5
+  });
   
   // Reset state when the modal opens with a new game
   useEffect(() => {
@@ -88,9 +107,14 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
   }, [gameToConfig, players]);
   
   const handleSave = () => {
-    if (!gameToConfig) return;
-    
-    // Validate stake
+    if (gameToConfig && gameToConfig.type === 'nassau') {
+      // Validate Nassau stakes
+      if (nassauSettings.frontNineStake + nassauSettings.backNineStake !== nassauSettings.overallStake) {
+        Alert.alert('Invalid Stakes', 'Front Nine + Back Nine stakes must equal Overall stake');
+        return;
+      }
+    }
+
     const stake = parseFloat(gameStake);
     if (isNaN(stake) || stake <= 0) {
       alert('Please enter a valid stake amount greater than 0.');
@@ -100,15 +124,23 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
     // Create game settings object
     const gameConfig: GameConfig = {
       type: gameToConfig.type,
-      stake: stake,
+      stake: gameToConfig.type === 'nassau' ? nassauSettings.overallStake : stake,
       settings: {
         ...gameSettings,
-        teams: gameTeams
+        teams: gameTeams,
+        ...(gameToConfig.type === 'nassau' ? {
+          frontNineStake: nassauSettings.frontNineStake,
+          backNineStake: nassauSettings.backNineStake,
+          overallStake: nassauSettings.overallStake,
+          pressType: nassauSettings.pressType,
+          pressStake: nassauSettings.pressStake
+        } : {})
       }
     };
     
     // Call the parent component's onSave callback
     onSave(gameConfig);
+    onClose();
   };
   
   if (!gameToConfig) return null;
@@ -192,8 +224,11 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
                         borderColor: colors.border,
                         backgroundColor: colors.card
                       }]}
-                      value={gameSettings.frontNineStake?.toString() || '1'}
-                      onChangeText={(value) => setGameSettings({...gameSettings, frontNineStake: parseFloat(value) || 1})}
+                      value={nassauSettings.frontNineStake.toString()}
+                      onChangeText={(value) => setNassauSettings(prev => ({
+                        ...prev,
+                        frontNineStake: Number(value) || 0
+                      }))}
                       keyboardType="numeric"
                       placeholderTextColor={colors.textSecondary}
                     />
@@ -207,65 +242,68 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
                         borderColor: colors.border,
                         backgroundColor: colors.card
                       }]}
-                      value={gameSettings.backNineStake?.toString() || '1'}
-                      onChangeText={(value) => setGameSettings({...gameSettings, backNineStake: parseFloat(value) || 1})}
+                      value={nassauSettings.backNineStake.toString()}
+                      onChangeText={(value) => setNassauSettings(prev => ({
+                        ...prev,
+                        backNineStake: Number(value) || 0
+                      }))}
                       keyboardType="numeric"
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
                   
                   <View style={styles.gameConfigRow}>
-                    <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Total Stake ($)</Text>
+                    <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Overall Stake ($)</Text>
                     <TextInput
                       style={[styles.gameConfigSmallInput, { 
                         color: colors.textPrimary,
                         borderColor: colors.border,
                         backgroundColor: colors.card
                       }]}
-                      value={gameSettings.totalStake?.toString() || '1'}
-                      onChangeText={(value) => setGameSettings({...gameSettings, totalStake: parseFloat(value) || 1})}
+                      value={nassauSettings.overallStake.toString()}
+                      onChangeText={(value) => setNassauSettings(prev => ({
+                        ...prev,
+                        overallStake: Number(value) || 0
+                      }))}
                       keyboardType="numeric"
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
                   
                   <View style={styles.gameConfigRow}>
-                    <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Use Press</Text>
-                    <Switch
-                      value={gameSettings.usePress || false}
-                      onValueChange={(value) => setGameSettings({...gameSettings, usePress: value})}
-                      trackColor={{ false: colors.border, true: colors.primary + '80' }}
-                      thumbColor={gameSettings.usePress ? colors.primary : colors.secondaryLight}
-                    />
+                    <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Press Type</Text>
+                    <Picker
+                      selectedValue={nassauSettings.pressType}
+                      onValueChange={(value) => setNassauSettings(prev => ({
+                        ...prev,
+                        pressType: value as PressType
+                      }))}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="No Presses" value="none" />
+                      <Picker.Item label="Player Anytime Presses" value="anytime" />
+                      <Picker.Item label="2-Down Auto Press" value="auto" />
+                    </Picker>
                   </View>
                   
-                  {gameSettings.usePress && (
-                    <>
-                      <View style={styles.gameConfigRow}>
-                        <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Automatic Press</Text>
-                        <Switch
-                          value={gameSettings.automaticPress || false}
-                          onValueChange={(value) => setGameSettings({...gameSettings, automaticPress: value})}
-                          trackColor={{ false: colors.border, true: colors.primary + '80' }}
-                          thumbColor={gameSettings.automaticPress ? colors.primary : colors.secondaryLight}
-                        />
-                      </View>
-                      
-                      <View style={styles.gameConfigRow}>
-                        <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Press Amount ($)</Text>
-                        <TextInput
-                          style={[styles.gameConfigSmallInput, { 
-                            color: colors.textPrimary,
-                            borderColor: colors.border,
-                            backgroundColor: colors.card
-                          }]}
-                          value={gameSettings.pressAmount?.toString() || '1'}
-                          onChangeText={(value) => setGameSettings({...gameSettings, pressAmount: parseFloat(value) || 1})}
-                          keyboardType="numeric"
-                          placeholderTextColor={colors.textSecondary}
-                        />
-                      </View>
-                    </>
+                  {nassauSettings.pressType !== 'none' && (
+                    <View style={styles.gameConfigRow}>
+                      <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Press Stake ($)</Text>
+                      <TextInput
+                        style={[styles.gameConfigSmallInput, { 
+                          color: colors.textPrimary,
+                          borderColor: colors.border,
+                          backgroundColor: colors.card
+                        }]}
+                        value={nassauSettings.pressStake?.toString()}
+                        onChangeText={(value) => setNassauSettings(prev => ({
+                          ...prev,
+                          pressStake: Number(value) || 0
+                        }))}
+                        keyboardType="numeric"
+                        placeholderTextColor={colors.textSecondary}
+                      />
+                    </View>
                   )}
                 </View>
               )}
@@ -489,6 +527,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: SIZES.padding,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
 });
 

@@ -25,12 +25,15 @@ import { updateGameResults } from '../../store/slices/gameSlice';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Scorecard from '../../components/Scorecard';
-import MatchPlayStatus from '../../components/MatchPlayStatus';
+import MatchPlayStatus from '../../components/GameStatuses/MatchPlayStatus';
+import NassauStatus from '../../components/GameStatuses/NassauStatus';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { createFontStyle } from '../../utils/styleUtils';
 import { useTheme } from '../../components/ThemeProvider';
 import { getCourseHandicaps } from '../../utils/handicapUtils';
+import { MatchPlayScorecard } from '../../components/GameScorecards/MatchPlayScorecard';
+import { NassauScorecard } from '../../components/GameScorecards/NassauScorecard';
 
 export default function RoundScreen() {
   // Hooks must be called unconditionally at the top level
@@ -307,10 +310,15 @@ export default function RoundScreen() {
     return {};
   }, [currentRound]);
 
-  // Check if match play game is active
+  // Check if match play or nassau game is active
   const hasMatchPlayGame = useMemo(() => {
     if (!selectedGames || selectedGames.length === 0) return false;
     return selectedGames.some(game => game.type === 'match-play');
+  }, [selectedGames]);
+
+  const hasNassauGame = useMemo(() => {
+    if (!selectedGames || selectedGames.length === 0) return false;
+    return selectedGames.some(game => game.type === 'nassau');
   }, [selectedGames]);
 
   // Show loading screen if navigating away
@@ -430,18 +438,48 @@ export default function RoundScreen() {
             courseHandicaps={courseHandicaps}
           />
         )}
+
+        {/* Show Nassau Status if nassau game is active */}
+        {hasNassauGame && currentRound?.players?.length === 2 && (
+          <NassauStatus
+            players={currentRound.players}
+            scores={currentRound.scores}
+            course={currentRound.course!}
+            currentHole={currentHole}
+            holeRange={holeRange}
+            courseHandicaps={courseHandicaps}
+          />
+        )}
         
         <View style={styles.scorecardContainer}>
-          <Scorecard
-            course={currentRound!.course!}
-            players={currentRound!.players}
-            scores={currentRound!.scores}
-            holeRange={[currentHole]} // Just show the current hole
-            editable={true}
-            onScoreChange={handleScoreChange}
-            courseHandicaps={courseHandicaps}
-            matchPlayMode={hasMatchPlayGame}
-          />
+          {hasMatchPlayGame ? (
+            <MatchPlayScorecard
+              round={currentRound!}
+              players={currentRound!.players}
+              scores={currentRound!.scores}
+              course={currentRound!.course!}
+              courseHandicaps={courseHandicaps}
+            />
+          ) : hasNassauGame ? (
+            <NassauScorecard
+              round={currentRound!}
+              players={currentRound!.players}
+              scores={currentRound!.scores}
+              course={currentRound!.course!}
+              courseHandicaps={courseHandicaps}
+            />
+          ) : (
+            <Scorecard
+              course={currentRound!.course!}
+              players={currentRound!.players}
+              scores={currentRound!.scores}
+              holeRange={[currentHole]} // Just show the current hole
+              editable={true}
+              onScoreChange={handleScoreChange}
+              courseHandicaps={courseHandicaps}
+              matchPlayMode={hasMatchPlayGame}
+            />
+          )}
         </View>
         
         <View style={styles.actionButtons}>

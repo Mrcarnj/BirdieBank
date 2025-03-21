@@ -25,7 +25,7 @@ import { useTheme } from '../../../components/ThemeProvider';
 import Card from '../../../components/Card';
 import Button from '../../../components/Button';
 import { getStrokesReceivedOnHole, getCourseHandicaps } from '../../../utils/handicapUtils';
-import { MatchPlayScorecard } from '../../../components/MatchPlayScorecard';
+import { MatchPlayScorecard } from '../../../components/GameScorecards/MatchPlayScorecard';
 
 interface ScorecardProps {
   round: Round;
