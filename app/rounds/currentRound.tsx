@@ -452,34 +452,16 @@ export default function RoundScreen() {
         )}
         
         <View style={styles.scorecardContainer}>
-          {hasMatchPlayGame ? (
-            <MatchPlayScorecard
-              round={currentRound!}
-              players={currentRound!.players}
-              scores={currentRound!.scores}
-              course={currentRound!.course!}
-              courseHandicaps={courseHandicaps}
-            />
-          ) : hasNassauGame ? (
-            <NassauScorecard
-              round={currentRound!}
-              players={currentRound!.players}
-              scores={currentRound!.scores}
-              course={currentRound!.course!}
-              courseHandicaps={courseHandicaps}
-            />
-          ) : (
-            <Scorecard
-              course={currentRound!.course!}
-              players={currentRound!.players}
-              scores={currentRound!.scores}
-              holeRange={[currentHole]} // Just show the current hole
-              editable={true}
-              onScoreChange={handleScoreChange}
-              courseHandicaps={courseHandicaps}
-              matchPlayMode={hasMatchPlayGame}
-            />
-          )}
+          <Scorecard
+            course={currentRound!.course!}
+            players={currentRound!.players}
+            scores={currentRound!.scores}
+            holeRange={[currentHole]} // Just show the current hole
+            editable={true}
+            onScoreChange={handleScoreChange}
+            courseHandicaps={courseHandicaps}
+            matchPlayMode={hasMatchPlayGame || hasNassauGame} // Show strokes for both Match Play and Nassau
+          />
         </View>
         
         <View style={styles.actionButtons}>

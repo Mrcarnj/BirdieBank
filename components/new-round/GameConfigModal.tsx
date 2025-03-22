@@ -9,9 +9,9 @@ import {
   TextInput,
   ScrollView,
   Switch,
-  Picker,
   Alert
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { FONTS, SIZES } from '../../constants/theme';
 import { PlayerWithTee } from '../../store/slices/playerSlice';
@@ -59,7 +59,6 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
 }) => {
   const { colors } = useTheme();
   
-  const [gameStake, setGameStake] = useState('1');
   const [gameTeams, setGameTeams] = useState<{[playerId: string]: number}>({});
   const [gameSettings, setGameSettings] = useState<Record<string, any>>({});
   const [nassauSettings, setNassauSettings] = useState<NassauSettings>({
@@ -73,8 +72,6 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
   // Reset state when the modal opens with a new game
   useEffect(() => {
     if (gameToConfig) {
-      setGameStake('1');
-      
       // Initialize teams based on game type
       const initialTeams: {[playerId: string]: number} = {};
       players.forEach((player, index) => {
@@ -114,17 +111,11 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
         return;
       }
     }
-
-    const stake = parseFloat(gameStake);
-    if (isNaN(stake) || stake <= 0) {
-      alert('Please enter a valid stake amount greater than 0.');
-      return;
-    }
     
     // Create game settings object
     const gameConfig: GameConfig = {
       type: gameToConfig.type,
-      stake: gameToConfig.type === 'nassau' ? nassauSettings.overallStake : stake,
+      stake: gameToConfig.type === 'nassau' ? nassauSettings.overallStake : 1,
       settings: {
         ...gameSettings,
         teams: gameTeams,
@@ -160,8 +151,8 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
         <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
           <View style={[styles.modalContainer, { 
             backgroundColor: colors.background,
-            minHeight: 300,
-            maxHeight: '80%'
+            minHeight: 400,
+            maxHeight: '90%'
           }]}>
             <View style={{ 
               flexDirection: 'row', 
@@ -192,23 +183,6 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
                     {gameToConfig.description}
                   </Text>
                 </View>
-              </View>
-              
-              {/* Stake amount */}
-              <View style={styles.gameConfigSection}>
-                <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Stake Amount ($)</Text>
-                <TextInput
-                  style={[styles.gameConfigInput, { 
-                    color: colors.textPrimary,
-                    borderColor: colors.border,
-                    backgroundColor: colors.card
-                  }]}
-                  value={gameStake}
-                  onChangeText={setGameStake}
-                  keyboardType="numeric"
-                  placeholder="Enter stake amount"
-                  placeholderTextColor={colors.textSecondary}
-                />
               </View>
               
               {/* Game-specific settings */}
@@ -270,41 +244,10 @@ const GameConfigModal: React.FC<GameConfigModalProps> = ({
                     />
                   </View>
                   
-                  <View style={styles.gameConfigRow}>
-                    <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Press Type</Text>
-                    <Picker
-                      selectedValue={nassauSettings.pressType}
-                      onValueChange={(value) => setNassauSettings(prev => ({
-                        ...prev,
-                        pressType: value as PressType
-                      }))}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="No Presses" value="none" />
-                      <Picker.Item label="Player Anytime Presses" value="anytime" />
-                      <Picker.Item label="2-Down Auto Press" value="auto" />
-                    </Picker>
-                  </View>
-                  
-                  {nassauSettings.pressType !== 'none' && (
-                    <View style={styles.gameConfigRow}>
-                      <Text style={[styles.gameConfigLabel, { color: colors.textPrimary }]}>Press Stake ($)</Text>
-                      <TextInput
-                        style={[styles.gameConfigSmallInput, { 
-                          color: colors.textPrimary,
-                          borderColor: colors.border,
-                          backgroundColor: colors.card
-                        }]}
-                        value={nassauSettings.pressStake?.toString()}
-                        onChangeText={(value) => setNassauSettings(prev => ({
-                          ...prev,
-                          pressStake: Number(value) || 0
-                        }))}
-                        keyboardType="numeric"
-                        placeholderTextColor={colors.textSecondary}
-                      />
-                    </View>
-                  )}
+                  {/* Press functionality will be implemented later */}
+                  <Text style={[styles.gameConfigNote, { color: colors.textSecondary, marginTop: SIZES.base }]}>
+                    Press functionality coming soon
+                  </Text>
                 </View>
               )}
               
@@ -449,8 +392,8 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
   },
   modalContainer: {
-    width: '85%',
-    minHeight: 250,
+    width: '90%',
+    minHeight: 400,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
   },
@@ -528,9 +471,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: SIZES.padding,
   },
+  pickerContainer: {
+    width: 200,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   picker: {
-    height: 50,
     width: '100%',
+    height: 100,
   },
 });
 
