@@ -145,10 +145,56 @@ export default function RoundScreen() {
     }, 500);
   }, [router]);
 
+  // Handle navigation to next hole
+  const handleNextHole = useCallback(() => {
+    const currentIndex = holeRange.indexOf(currentHole);
+    if (currentIndex < holeRange.length - 1) {
+      setCurrentHole(holeRange[currentIndex + 1]);
+    } else {
+      // Last hole reached
+      setShowEndRoundConfirm(true);
+    }
+  }, [currentHole, holeRange]);
+
+  // Add new function to handle discarding round
+  const handleDiscardRound = useCallback(() => {
+    if (!currentRound) return;
+    
+    // Clear the round from the store
+    dispatch(completeRound(currentRound.id));
+    
+    // Show success message before navigating
+    Alert.alert(
+      "Round Discarded",
+      "The round has been discarded.",
+      [{ 
+        text: "OK", 
+        onPress: () => {
+          setRoundCompleted(true);
+          setShowEndRoundConfirm(false);
+          safeNavigateHome();
+        }
+      }],
+      { cancelable: false }
+    );
+  }, [currentRound, dispatch, safeNavigateHome]);
+
   // Complete current round with simplified logic
   const completeCurrentRound = useCallback(() => {
     if (!currentRound || !user) return;
     console.log("Completing round...");
+    
+    // Check if all scores are entered
+    const totalScoresNeeded = currentRound.players.length * holeRange.length;
+    const scoresEntered = currentRound.scores.filter(score => 
+      holeRange.includes(score.holeNumber)
+    ).length;
+    
+    // If round is incomplete, discard it instead of saving
+    if (scoresEntered < totalScoresNeeded) {
+      handleDiscardRound();
+      return;
+    }
     
     // First ensure round is saved
     const savePromise = currentRound.id.startsWith('temp-')
@@ -189,7 +235,7 @@ export default function RoundScreen() {
         console.error('Failed to complete round:', error);
         Alert.alert('Error', 'Failed to complete the round. Please try again.');
       });
-  }, [currentRound, user, dispatch, selectedGames, safeNavigateHome]);
+  }, [currentRound, user, dispatch, selectedGames, safeNavigateHome, holeRange, handleDiscardRound]);
   
   // Handle score changes
   const handleScoreChange = useCallback((score: HoleScore) => {
@@ -227,45 +273,6 @@ export default function RoundScreen() {
       setCurrentHole(holeRange[currentIndex - 1]);
     }
   }, [currentHole, holeRange]);
-
-  // Handle navigation to next hole
-  const handleNextHole = useCallback(() => {
-    const currentIndex = holeRange.indexOf(currentHole);
-    if (currentIndex < holeRange.length - 1) {
-      setCurrentHole(holeRange[currentIndex + 1]);
-    } else {
-      // Last hole reached
-      setShowEndRoundConfirm(true);
-    }
-  }, [currentHole, holeRange]);
-
-  // Handle end round button press
-  const handleEndRound = useCallback(() => {
-    if (!currentRound) return;
-    
-    // Check if all scores are entered
-    const totalScoresNeeded = currentRound.players.length * holeRange.length;
-    const scoresEntered = currentRound.scores.filter(score => 
-      holeRange.includes(score.holeNumber)
-    ).length;
-    
-    if (scoresEntered < totalScoresNeeded) {
-      Alert.alert(
-        'Incomplete Scorecard',
-        `You've only entered ${scoresEntered} out of ${totalScoresNeeded} scores. Are you sure you want to end the round?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'End Round', 
-            style: 'destructive', 
-            onPress: completeCurrentRound 
-          }
-        ]
-      );
-    } else {
-      completeCurrentRound();
-    }
-  }, [currentRound, holeRange, completeCurrentRound]);
 
   // Get current hole data
   const currentHoleData = useMemo(() => {
@@ -468,7 +475,32 @@ export default function RoundScreen() {
           <Button
             title="End Round"
             variant="outline"
-            onPress={() => setShowEndRoundConfirm(true)}
+            onPress={() => {
+              // Check if round is incomplete before showing confirmation
+              if (!currentRound) return;
+              
+              const totalScoresNeeded = currentRound.players.length * holeRange.length;
+              const scoresEntered = currentRound.scores.filter(score => 
+                holeRange.includes(score.holeNumber)
+              ).length;
+              
+              if (scoresEntered < totalScoresNeeded) {
+                Alert.alert(
+                  'Incomplete Round',
+                  `You've only entered ${scoresEntered} scores. Would you like to discard this round?`,
+                  [
+                    { 
+                      text: 'Discard Round', 
+                      style: 'destructive', 
+                      onPress: handleDiscardRound 
+                    },
+                    { text: 'Continue Playing', style: 'cancel' }
+                  ]
+                );
+              } else {
+                setShowEndRoundConfirm(true);
+              }
+            }}
             style={styles.endRoundButton}
           />
           
@@ -483,7 +515,7 @@ export default function RoundScreen() {
           />
         </View>
         
-        {/* End Round Confirmation Modal */}
+        {/* End Round Confirmation Modal - only shown for complete rounds */}
         <Modal
           visible={showEndRoundConfirm}
           transparent={true}
@@ -507,7 +539,7 @@ export default function RoundScreen() {
                   title="End Round"
                   onPress={() => {
                     setShowEndRoundConfirm(false);
-                    handleEndRound();
+                    completeCurrentRound();
                   }}
                   style={styles.confirmButton}
                 />
