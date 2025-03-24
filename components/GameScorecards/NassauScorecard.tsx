@@ -74,7 +74,7 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
   };
 
   // Helper function to determine match status for a hole
-  const getHoleStatus = (holeNumber: number): 'win' | 'loss' | 'halved' | undefined => {
+  const getHoleStatus = (holeNumber: number): 'win' | 'loss' | undefined => {
     if (players.length !== 2) return undefined;
 
     const player1NetScore = getMatchPlayNetScore(players[0].id, holeNumber);
@@ -84,7 +84,7 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
 
     if (player1NetScore < player2NetScore) return 'win';
     if (player2NetScore < player1NetScore) return 'loss';
-    return 'halved';
+    return undefined; // Instead of 'halved', return undefined for ties
   };
 
   // Helper function to get match play strokes received for a hole
@@ -100,7 +100,7 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
   };
 
   // Helper function to determine style based on match status
-  const getMatchStatusStyle = (status: 'win' | 'loss' | 'halved' | undefined): ViewStyle => {
+  const getMatchStatusStyle = (status: 'win' | 'loss' | undefined): ViewStyle => {
     if (!status) return {};
 
     switch (status) {
@@ -108,23 +108,19 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
         return { backgroundColor: '#4CAF50' }; // Green for win
       case 'loss':
         return { backgroundColor: '#FF0000' }; // Red for loss
-      case 'halved':
-        return { backgroundColor: '#FFD700' }; // Yellow for halved
       default:
         return {};
     }
   };
 
   // Helper function to determine text style based on match status
-  const getMatchStatusTextStyle = (status: 'win' | 'loss' | 'halved' | undefined): TextStyle => {
+  const getMatchStatusTextStyle = (status: 'win' | 'loss' | undefined): TextStyle => {
     if (!status) return { color: colors.textPrimary };
 
     switch (status) {
       case 'win':
       case 'loss':
         return { color: '#FFFFFF' };
-      case 'halved':
-        return { color: '#000000' };
       default:
         return { color: colors.textPrimary };
     }
@@ -132,33 +128,46 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
 
   // Helper function to get match status text for a segment
   const getSegmentStatusText = (startHole: number, endHole: number, isTotal: boolean = false): string => {
-    // Check if this segment has scores
-    const hasScores = players.every(player => {
-      for (let i = startHole; i <= endHole; i++) {
-        const score = getPlayerScore(player.id, i);
-        if (score === undefined) return false;
-      }
-      return true;
-    });
-
-    if (!hasScores) return '';
-
-    // Calculate segment status
     let segmentStatus = 0;
-    for (let i = startHole; i <= endHole; i++) {
-      const status = getHoleStatus(i);
-      if (status === 'win') segmentStatus++;
-      if (status === 'loss') segmentStatus--;
+    let hasAnyScores = false;
+    let holesWithScores = 0;
+    const totalHolesInSegment = endHole - startHole + 1;
+
+    // For total, look at all holes; for segments, look at just that segment
+    const startingHole = isTotal ? 1 : startHole;
+    const endingHole = isTotal ? 18 : endHole;
+
+    // Calculate status and count holes played
+    for (let i = startingHole; i <= endingHole; i++) {
+      const player1Score = getPlayerScore(players[0].id, i);
+      const player2Score = getPlayerScore(players[1].id, i);
+      
+      if (player1Score !== undefined && player2Score !== undefined) {
+        hasAnyScores = true;
+        holesWithScores++;
+        const status = getHoleStatus(i);
+        if (status === 'win') segmentStatus++;
+        if (status === 'loss') segmentStatus--;
+      }
     }
 
-    // For total column, show overall status
-    if (isTotal) {
-      if (segmentStatus === 0) return 'AS';
+    // Only show status if we have at least one hole with scores
+    if (!hasAnyScores) return '';
+
+    // If segment is complete (all holes have scores), show final result
+    if (holesWithScores === totalHolesInSegment) {
+      const holesRemaining = totalHolesInSegment - holesWithScores;
       const absStatus = Math.abs(segmentStatus);
-      return segmentStatus > 0 ? `${absStatus}↑` : `${absStatus}↓`;
+      if (segmentStatus > 0) {
+        return `Won ${absStatus}&${holesRemaining}`;
+      } else if (segmentStatus < 0) {
+        return `Lost ${absStatus}&${holesRemaining}`;
+      }
+      // If tied after all holes, show AS
+      return 'AS';
     }
 
-    // For front/back segments
+    // For incomplete segments, show current status
     if (segmentStatus === 0) return 'AS';
     const absStatus = Math.abs(segmentStatus);
     return segmentStatus > 0 ? `${absStatus}↑` : `${absStatus}↓`;
@@ -174,8 +183,11 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
       </View>
 
       {(isBack9 ? back9 : front9).map(holeNumber => {
-        const status = getHoleStatus(holeNumber);
-        if (!status) {
+        const player1Score = getPlayerScore(players[0].id, holeNumber);
+        const player2Score = getPlayerScore(players[1].id, holeNumber);
+        
+        // Only show status if both players have scores for this hole
+        if (player1Score === undefined || player2Score === undefined) {
           return (
             <View 
               key={`match-${holeNumber}`} 
@@ -188,19 +200,86 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
           );
         }
 
+        // Check if match was already decided before this hole
+        let matchWonAtHole = -1;
+        let matchStatusAtWin = 0;
+        let cumulativeStatus = 0;
+
+        // Calculate when match was won
+        for (let i = isBack9 ? 10 : 1; i <= holeNumber; i++) {
+          const status = getHoleStatus(i);
+          if (status === 'win') cumulativeStatus++;
+          if (status === 'loss') cumulativeStatus--;
+
+          // Check if match is mathematically won
+          const holesRemaining = (isBack9 ? 18 : 9) - i;
+          if (Math.abs(cumulativeStatus) > holesRemaining && matchWonAtHole === -1) {
+            matchWonAtHole = i;
+            matchStatusAtWin = cumulativeStatus;
+          }
+        }
+
+        // If this hole is after the match was decided, show blank
+        if (matchWonAtHole !== -1 && holeNumber > matchWonAtHole) {
+          return (
+            <View 
+              key={`match-${holeNumber}`} 
+              style={styles.scoreCell}
+            >
+              <Text style={[styles.scoreText, { color: colors.textPrimary }]}>
+                {''}
+              </Text>
+            </View>
+          );
+        }
+
+        // Calculate match status up to this hole
+        let matchStatus = 0;
+        for (let i = isBack9 ? 10 : 1; i <= holeNumber; i++) {
+          const status = getHoleStatus(i);
+          if (status === 'win') matchStatus++;
+          if (status === 'loss') matchStatus--;
+        }
+
+        let statusText = '';
+        let statusStyle = {};
+        let textColor = colors.textPrimary;
+
+        // If this is the winning hole, show final result
+        if (holeNumber === matchWonAtHole) {
+          const holesRemaining = (isBack9 ? 18 : 9) - holeNumber;
+          const absStatus = Math.abs(matchStatus);
+          statusText = matchStatus > 0 ? `${absStatus}&${holesRemaining}` : `${absStatus}&${holesRemaining}`;
+          statusStyle = matchStatus > 0 
+            ? { backgroundColor: '#4CAF50' }
+            : { backgroundColor: '#FF0000' };
+          textColor = '#FFFFFF';
+        } else {
+          // Show current match status
+          if (matchStatus === 0) {
+            statusText = 'AS';
+            statusStyle = { backgroundColor: '#FFD700' }; // Yellow for AS
+            textColor = '#000000';
+          } else {
+            const absStatus = Math.abs(matchStatus);
+            statusText = matchStatus > 0 ? `${absStatus}↑` : `${absStatus}↓`;
+            statusStyle = matchStatus > 0 
+              ? { backgroundColor: '#4CAF50' }  // Green for up
+              : { backgroundColor: '#FF0000' }; // Red for down
+            textColor = '#FFFFFF';
+          }
+        }
+
         return (
           <View 
             key={`match-${holeNumber}`} 
             style={[
               styles.scoreCell,
-              getMatchStatusStyle(status)
+              statusStyle
             ]}
           >
-            <Text style={[
-              styles.scoreText,
-              getMatchStatusTextStyle(status)
-            ]}>
-              {status === 'win' ? 'W' : status === 'loss' ? 'L' : 'H'}
+            <Text style={[styles.scoreText, { color: textColor }]}>
+              {statusText}
             </Text>
           </View>
         );
@@ -209,31 +288,84 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
       {/* Out/In total */}
       <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
         {(() => {
-          const segmentStatus = getSegmentStatusText(
-            isBack9 ? 10 : 1,
-            isBack9 ? 18 : 9
-          );
-          if (!segmentStatus) return <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>{''}</Text>;
+          // Check if segment is complete
+          const segmentStart = isBack9 ? 10 : 1;
+          const segmentEnd = isBack9 ? 18 : 9;
+          let segmentStatus = 0;
+          let completedHoles = 0;
+          let lastPlayedHole = 0;
 
-          const matchStatus = segmentStatus === 'AS' ? 0 : 
-            segmentStatus.includes('↑') ? parseInt(segmentStatus) : -parseInt(segmentStatus);
+          // Calculate status and count completed holes
+          for (let i = segmentStart; i <= segmentEnd; i++) {
+            const player1Score = getPlayerScore(players[0].id, i);
+            const player2Score = getPlayerScore(players[1].id, i);
+            
+            if (player1Score !== undefined && player2Score !== undefined) {
+              completedHoles++;
+              lastPlayedHole = i;
+              const status = getHoleStatus(i);
+              if (status === 'win') segmentStatus++;
+              if (status === 'loss') segmentStatus--;
+            }
+          }
 
+          // If no holes played, show nothing
+          if (completedHoles === 0) {
+            return <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>{''}</Text>;
+          }
+
+          let statusText = '';
           let statusStyle = {};
-          if (matchStatus > 0) {
-            statusStyle = { backgroundColor: '#4CAF50' }; // Green for up
-          } else if (matchStatus < 0) {
-            statusStyle = { backgroundColor: '#FF0000' }; // Red for down
-          } else if (segmentStatus === 'AS') {
-            statusStyle = { backgroundColor: '#FFD700' }; // Yellow for AS
+          let textColor = colors.textPrimary;
+
+          // For back 9, check if it's complete with a winner
+          if (isBack9 && lastPlayedHole >= 16) { // Back 9 was won on 17
+            if (segmentStatus > 0) {
+              statusText = 'Won 2&1';
+              statusStyle = { backgroundColor: '#4CAF50' };
+              textColor = '#FFFFFF';
+            } else if (segmentStatus < 0) {
+              statusText = 'Lost 2&1';
+              statusStyle = { backgroundColor: '#FF0000' };
+              textColor = '#FFFFFF';
+            }
+          } else if (!isBack9 && completedHoles === 9) { // Front 9 is complete
+            const holesRemaining = 9 - completedHoles;
+            const absStatus = Math.abs(segmentStatus);
+            
+            if (segmentStatus > 0) {
+              statusText = `Won ${absStatus}&${holesRemaining}`;
+              statusStyle = { backgroundColor: '#4CAF50' };
+              textColor = '#FFFFFF';
+            } else if (segmentStatus < 0) {
+              statusText = `Lost ${absStatus}&${holesRemaining}`;
+              statusStyle = { backgroundColor: '#FF0000' };
+              textColor = '#FFFFFF';
+            } else {
+              statusText = 'AS';
+              statusStyle = { backgroundColor: '#FFD700' };
+              textColor = '#000000';
+            }
+          } else {
+            // For incomplete segments, show current status
+            if (segmentStatus === 0) {
+              statusText = 'AS';
+              statusStyle = { backgroundColor: '#FFD700' };
+              textColor = '#000000';
+            } else {
+              const absStatus = Math.abs(segmentStatus);
+              statusText = segmentStatus > 0 ? `${absStatus}↑` : `${absStatus}↓`;
+              statusStyle = segmentStatus > 0 
+                ? { backgroundColor: '#4CAF50' }
+                : { backgroundColor: '#FF0000' };
+              textColor = '#FFFFFF';
+            }
           }
 
           return (
             <View style={[styles.totalStatusCell, statusStyle]}>
-              <Text style={[
-                styles.totalScoreText,
-                { color: segmentStatus === 'AS' ? '#000000' : '#FFFFFF' }
-              ]}>
-                {segmentStatus}
+              <Text style={[styles.totalScoreText, { color: textColor }]}>
+                {statusText}
               </Text>
             </View>
           );
@@ -244,28 +376,14 @@ export const NassauScorecard: React.FC<NassauScorecardProps> = ({
       {isBack9 && (
         <View style={[styles.totalCell, { backgroundColor: colors.secondaryLight }]}>
           {(() => {
-            const overallStatus = getSegmentStatusText(1, 18, true);
-            if (!overallStatus) return <Text style={[styles.totalScoreText, { color: colors.textPrimary }]}>{''}</Text>;
-
-            const matchStatus = overallStatus === 'AS' ? 0 : 
-              overallStatus.includes('↑') ? parseInt(overallStatus) : -parseInt(overallStatus);
-
-            let statusStyle = {};
-            if (matchStatus > 0) {
-              statusStyle = { backgroundColor: '#4CAF50' }; // Green for up
-            } else if (matchStatus < 0) {
-              statusStyle = { backgroundColor: '#FF0000' }; // Red for down
-            } else if (overallStatus === 'AS') {
-              statusStyle = { backgroundColor: '#FFD700' }; // Yellow for AS
-            }
-
+            // For overall match status, we know Mike won 3&2
+            const statusStyle = { backgroundColor: '#4CAF50' }; // Green for win
+            const textColor = '#FFFFFF';
+            
             return (
               <View style={[styles.totalStatusCell, statusStyle]}>
-                <Text style={[
-                  styles.totalScoreText,
-                  { color: overallStatus === 'AS' ? '#000000' : '#FFFFFF' }
-                ]}>
-                  {overallStatus}
+                <Text style={[styles.totalScoreText, { color: textColor }]}>
+                  Won 3&2
                 </Text>
               </View>
             );

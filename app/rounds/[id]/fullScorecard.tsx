@@ -26,6 +26,7 @@ import Card from '../../../components/Card';
 import Button from '../../../components/Button';
 import { getStrokesReceivedOnHole, getCourseHandicaps } from '../../../utils/handicapUtils';
 import { MatchPlayScorecard } from '../../../components/GameScorecards/MatchPlayScorecard';
+import { NassauScorecard } from '../../../components/GameScorecards/NassauScorecard';
 
 interface ScorecardProps {
   round: Round;
@@ -130,12 +131,17 @@ const FullScorecard = ({ round }: ScorecardProps) => {
   // State for selected player
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0);
   
-  // State for match play toggle
+  // State for match play and nassau toggles
   const [showMatchPlay, setShowMatchPlay] = useState(false);
+  const [showNassau, setShowNassau] = useState(false);
   
-  // Check if this is a match play round
+  // Check if this is a match play or nassau round
   const isMatchPlay = useMemo(() => {
     return selectedGames.some(game => game.type === 'match-play');
+  }, [selectedGames]);
+
+  const isNassau = useMemo(() => {
+    return selectedGames.some(game => game.type === 'nassau');
   }, [selectedGames]);
 
   // Calculate course handicaps
@@ -399,20 +405,43 @@ const FullScorecard = ({ round }: ScorecardProps) => {
   
   return (
     <View style={styles.scorecardContainer}>
-      {/* Match Play Toggle */}
-      {isMatchPlay && (
+      {/* Game Type Toggle */}
+      {(isMatchPlay || isNassau) && (
         <TouchableOpacity
           style={[
             styles.matchPlayToggle,
             { borderColor: colors.primary }
           ]}
-          onPress={() => setShowMatchPlay(!showMatchPlay)}
+          onPress={() => {
+            if (isMatchPlay && isNassau) {
+              // If both games are active, cycle through them
+              if (showMatchPlay) {
+                setShowMatchPlay(false);
+                setShowNassau(true);
+              } else if (showNassau) {
+                setShowNassau(false);
+                setShowMatchPlay(true);
+              } else {
+                setShowMatchPlay(true);
+              }
+            } else {
+              // If only one game type is active, just toggle that one
+              if (isMatchPlay) {
+                setShowMatchPlay(!showMatchPlay);
+              } else if (isNassau) {
+                setShowNassau(!showNassau);
+              }
+            }
+          }}
         >
           <Text style={[
             styles.toggleText,
             { color: colors.primary }
           ]}>
-            {showMatchPlay ? 'Show Regular Scorecard' : 'Show Match Play Scorecard'}
+            {showMatchPlay ? 'Show Regular Scorecard' : 
+             showNassau ? 'Show Regular Scorecard' : 
+             isMatchPlay ? 'Show Match Play Scorecard' : 
+             'Show Nassau Scorecard'}
           </Text>
         </TouchableOpacity>
       )}
@@ -420,6 +449,14 @@ const FullScorecard = ({ round }: ScorecardProps) => {
       {/* Scorecard View */}
       {isMatchPlay && showMatchPlay && course ? (
         <MatchPlayScorecard
+          round={round}
+          players={players}
+          scores={scores}
+          course={course}
+          courseHandicaps={effectiveCourseHandicaps}
+        />
+      ) : isNassau && showNassau && course ? (
+        <NassauScorecard
           round={round}
           players={players}
           scores={scores}
